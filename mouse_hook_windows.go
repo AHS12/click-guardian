@@ -2,9 +2,12 @@
 
 package main
 
-// #cgo LDFLAGS: -luser32
-// #include <windows.h>
-// LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam);
+/*
+#cgo LDFLAGS: -luser32 -lkernel32
+#include <windows.h>
+
+extern LRESULT LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam);
+*/
 import "C"
 
 import (
@@ -59,7 +62,7 @@ func startHook(d time.Duration, logChan chan string) {
 	delay = d
 	logChannel = logChan
 	go func() {
-		hook = C.SetWindowsHookExW(C.WH_MOUSE_LL, (C.HOOKPROC)(C.LowLevelMouseProc), nil, 0)
+		hook = C.SetWindowsHookExW(C.WH_MOUSE_LL, C.HOOKPROC(C.LowLevelMouseProc), nil, 0)
 		if hook == nil {
 			logChannel <- "❌ Failed to install mouse hook"
 			return
