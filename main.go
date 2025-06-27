@@ -105,12 +105,12 @@ func main() {
 				logHistory = logHistory[1:]
 			}
 
-			// Update the log display
+			// Update the log display on the main UI thread
 			allLogs := strings.Join(logHistory, "\n\n")
-			logText.ParseMarkdown(allLogs)
-
-			// Auto-scroll to bottom
-			logContainer.ScrollToBottom()
+			fyne.Do(func() {
+				logText.ParseMarkdown(allLogs)
+				logContainer.ScrollToBottom()
+			})
 		}
 	}()
 
