@@ -39,16 +39,42 @@ The application installs a low-level mouse hook that monitors left and right mou
 git clone <repository-url>
 cd go-double-click-fix
 go mod tidy
-go build
-./go-double-click-fix.exe
+
+# Build using the build script (Windows)
+scripts\build.bat
+
+# Or build manually
+go build -o dist\go-double-click-fix.exe .\cmd\doubleclick-fix
 ```
 
 ### Running
 
-Simply run the executable:
+Run the executable from the dist folder:
 
 ```bash
-./go-double-click-fix.exe
+dist\go-double-click-fix.exe
+```
+
+For development, you can use:
+
+```bash
+scripts\dev.bat
+```
+
+## Project Structure
+
+```
+go-double-click-fix/
+├── cmd/doubleclick-fix/          # Main application entry point
+├── internal/                     # Private application packages
+│   ├── config/                   # Configuration management
+│   ├── gui/                      # GUI application logic
+│   ├── hooks/                    # Platform-specific mouse hooks
+│   └── logger/                   # Logging functionality
+├── scripts/                      # Build and development scripts
+├── dist/                         # Build outputs (executables)
+├── docs/                         # Documentation
+└── assets/                       # Static assets
 ```
 
 ## Configuration
@@ -60,10 +86,20 @@ Simply run the executable:
 
 ## Technical Details
 
-- **Platform**: Windows only (uses Windows API)
+- **Platform**: Currently Windows only (uses Windows API)
 - **Framework**: Fyne v2 for GUI
 - **Hook Type**: Low-level mouse hook (WH_MOUSE_LL)
 - **Permissions**: May require administrator privileges on some systems
+- **Architecture**: Modular design prepared for cross-platform expansion
+
+### Cross-Platform Roadmap
+
+The project is structured to support multiple platforms in the future:
+
+- **Windows**: ✅ Fully supported (current)
+- **Linux**: 🚧 Planned (X11/Wayland support)
+- **macOS**: 🚧 Planned
+- **Web**: 🚧 Possible via Fyne web compilation
 
 ## Troubleshooting
 
@@ -77,6 +113,17 @@ Simply run the executable:
 
 - Reduce log verbosity by clearing logs frequently
 - Use reasonable delay values (avoid very small delays like 1ms)
+
+### VSCode Build Constraint Errors
+
+If you see errors like "build constraints exclude all Go files" in VSCode, this is a known issue with the Go language server and cross-platform dependencies. The errors are cosmetic - builds work fine.
+
+**Quick fix:**
+
+1. Open the workspace file: `go-double-click-fix.code-workspace`
+2. Or reload VSCode: `Ctrl+Shift+P` → "Developer: Reload Window"
+
+See `docs/VSCODE_SETUP.md` for detailed solutions.
 
 ### Application Not Responding
 

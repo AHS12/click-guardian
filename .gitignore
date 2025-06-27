@@ -1,0 +1,46 @@
+# Build artifacts
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+*.app
+*.deb
+*.rpm
+*.msi
+
+# Logs
+*.log
+logs/
+
+# IDE files
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Go
+vendor/
+*.test
+*.prof
+coverage.out
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+test_cgo.go
+test_cgo.exe
+
+# Config files (if they contain sensitive data)
+config.local.yaml
+config.local.json
+.env.local

@@ -1,0 +1,34 @@
+{
+    "go.toolsEnvVars": {
+        "CGO_ENABLED": "1",
+        "GOOS": "windows",
+        "GOARCH": "amd64"
+    },
+    "go.buildTags": "windows",
+    "go.buildFlags": [
+        "-tags=windows"
+    ],
+    "go.lintFlags": [
+        "-build-ignore-option=other"
+    ],
+    "go.useLanguageServer": true,
+    "gopls": {
+        "build.buildFlags": ["-tags=windows"],
+        "build.env": {
+            "CGO_ENABLED": "1",
+            "GOOS": "windows",
+            "GOARCH": "amd64"
+        },
+        "build.directoryFilters": [
+            "-node_modules",
+            "-vendor"
+        ],
+        "build.allowModfileModifications": true,
+        "build.allowImplicitNetworkAccess": true,
+        "formatting.gofumpt": true,
+        "ui.diagnostic.staticcheck": false,
+        "ui.completion.usePlaceholders": false
+    },
+    "go.alternateTools": {},
+    "go.gocodeAutoBuild": false
+}

@@ -1,0 +1,27 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "go.toolsEnvVars": {
+            "CGO_ENABLED": "1",
+            "GOOS": "windows"
+        },
+        "go.buildTags": "windows",
+        "gopls": {
+            "build.buildFlags": ["-tags=windows"],
+            "build.env": {
+                "GOOS": "windows",
+                "GOARCH": "amd64"
+            }
+        }
+    },
+    "extensions": {
+        "recommendations": [
+            "golang.go",
+            "ms-vscode.cpptools"
+        ]
+    }
+}
