@@ -1,7 +1,7 @@
 package main
 
 import (
-	"go-double-click-fix/internal/gui"
+	"click-guardian/internal/gui"
 )
 
 func main() {

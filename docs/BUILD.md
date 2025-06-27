@@ -1,4 +1,4 @@
-# Double Click Fix - Cross-Platform Build Instructions
+# Click Guardian - Cross-Platform Build Instructions
 
 ## Quick Start
 
@@ -21,27 +21,27 @@ chmod +x scripts/build.sh
 
 ```bash
 # Windows GUI version
-go build -ldflags "-s -w -H=windowsgui" -o dist/go-double-click-fix-gui.exe ./cmd/doubleclick-fix
+go build -ldflags "-s -w -H=windowsgui" -o dist/click-guardian-gui.exe ./cmd/click-guardian
 
 # Windows Console version
-go build -ldflags "-s -w" -o dist/go-double-click-fix.exe ./cmd/doubleclick-fix
+go build -ldflags "-s -w" -o dist/click-guardian.exe ./cmd/click-guardian
 
 # Linux/macOS
-go build -ldflags "-s -w" -o dist/go-double-click-fix ./cmd/doubleclick-fix
+go build -ldflags "-s -w" -o dist/click-guardian ./cmd/click-guardian
 ```
 
 ### Cross-Platform Build
 
 ```bash
 # Windows
-GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o dist/go-double-click-fix-windows-amd64.exe ./cmd/doubleclick-fix
+GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o dist/click-guardian-windows-amd64.exe ./cmd/click-guardian
 
 # Linux
-GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o dist/go-double-click-fix-linux-amd64 ./cmd/doubleclick-fix
+GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o dist/click-guardian-linux-amd64 ./cmd/click-guardian
 
 # macOS
-GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o dist/go-double-click-fix-darwin-amd64 ./cmd/doubleclick-fix
-GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -o dist/go-double-click-fix-darwin-arm64 ./cmd/doubleclick-fix
+GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o dist/click-guardian-darwin-amd64 ./cmd/click-guardian
+GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -o dist/click-guardian-darwin-arm64 ./cmd/click-guardian
 ```
 
 ## Development
@@ -53,7 +53,7 @@ GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -o dist/go-double-click-fix-d
 scripts\dev.bat
 
 # Linux/macOS
-go run ./cmd/doubleclick-fix
+go run ./cmd/click-guardian
 ```
 
 ### Clean Build Artifacts

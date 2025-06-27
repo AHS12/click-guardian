@@ -3,9 +3,9 @@
 ## Project Structure
 
 ```
-go-double-click-fix/
+click-guardian/
 ├── cmd/
-│   └── doubleclick-fix/          # Main application entry point
+│   └── click-guardian/          # Main application entry point
 │       └── main.go
 ├── internal/                     # Private application code
 │   ├── config/                   # Configuration management

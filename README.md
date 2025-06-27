@@ -1,4 +1,4 @@
-# Double Click Fix
+# Click Guardian
 
 A Windows application that prevents accidental double-clicks by introducing a customizable delay between mouse clicks.
 
@@ -37,14 +37,14 @@ The application installs a low-level mouse hook that monitors left and right mou
 
 ```bash
 git clone <repository-url>
-cd go-double-click-fix
+cd click-guardian
 go mod tidy
 
 # Build using the build script (Windows)
 scripts\build.bat
 
 # Or build manually
-go build -o dist\go-double-click-fix.exe .\cmd\doubleclick-fix
+go build -o dist\click-guardian.exe .\cmd\click-guardian
 ```
 
 ### Running
@@ -52,7 +52,7 @@ go build -o dist\go-double-click-fix.exe .\cmd\doubleclick-fix
 Run the executable from the dist folder:
 
 ```bash
-dist\go-double-click-fix.exe
+dist\click-guardian.exe
 ```
 
 For development, you can use:
@@ -64,8 +64,8 @@ scripts\dev.bat
 ## Project Structure
 
 ```
-go-double-click-fix/
-├── cmd/doubleclick-fix/          # Main application entry point
+click-guardian/
+├── cmd/click-guardian/          # Main application entry point
 ├── internal/                     # Private application packages
 │   ├── config/                   # Configuration management
 │   ├── gui/                      # GUI application logic
@@ -120,7 +120,7 @@ If you see errors like "build constraints exclude all Go files" in VSCode, this 
 
 **Quick fix:**
 
-1. Open the workspace file: `go-double-click-fix.code-workspace`
+1. Open the workspace file: `click-guardian.code-workspace`
 2. Or reload VSCode: `Ctrl+Shift+P` → "Developer: Reload Window"
 
 See `docs/VSCODE_SETUP.md` for detailed solutions.

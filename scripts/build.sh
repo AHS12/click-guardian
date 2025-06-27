@@ -2,7 +2,7 @@
 
 set -e
 
-echo "Building Double-Click Fix for multiple platforms..."
+echo "Building Click Guardian for multiple platforms..."
 
 # Get script directory and navigate to project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,11 +18,11 @@ rm -f dist/*
 
 # Define build targets
 declare -A targets=(
-    ["windows/amd64"]="dist/go-double-click-fix-windows-amd64.exe"
-    ["windows/386"]="dist/go-double-click-fix-windows-386.exe"
-    ["linux/amd64"]="dist/go-double-click-fix-linux-amd64"
-    ["darwin/amd64"]="dist/go-double-click-fix-darwin-amd64"
-    ["darwin/arm64"]="dist/go-double-click-fix-darwin-arm64"
+    ["windows/amd64"]="dist/click-guardian-windows-amd64.exe"
+    ["windows/386"]="dist/click-guardian-windows-386.exe"
+    ["linux/amd64"]="dist/click-guardian-linux-amd64"
+    ["darwin/amd64"]="dist/click-guardian-darwin-amd64"
+    ["darwin/arm64"]="dist/click-guardian-darwin-arm64"
 )
 
 # Build for each target
@@ -34,12 +34,12 @@ for target in "${!targets[@]}"; do
     
     if [ "$GOOS" = "windows" ]; then
         # GUI version for Windows
-        GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-s -w -H=windowsgui" -o "${output%.*}-gui.exe" ./cmd/doubleclick-fix
+        GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-s -w -H=windowsgui" -o "${output%.*}-gui.exe" ./cmd/click-guardian
         # Console version for Windows
-        GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-s -w" -o "$output" ./cmd/doubleclick-fix
+        GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-s -w" -o "$output" ./cmd/click-guardian
     else
         # Regular build for other platforms
-        GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-s -w" -o "$output" ./cmd/doubleclick-fix
+        GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "-s -w" -o "$output" ./cmd/click-guardian
     fi
     
     if [ $? -eq 0 ]; then

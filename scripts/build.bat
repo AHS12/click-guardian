@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-echo Building Double-Click Fix...
+echo Building Click Guardian...
 
 REM Navigate to project root
 cd /d "%~dp0.."
@@ -16,10 +16,10 @@ del /Q dist\*.exe 2>nul
 
 REM Build GUI version (no console window)
 echo Building GUI version...
-go build -ldflags "-s -w -H=windowsgui" -o dist\go-double-click-fix-gui.exe .\cmd\doubleclick-fix
+go build -ldflags "-s -w -H=windowsgui" -o dist\click-guardian-gui.exe .\cmd\click-guardian
 
 if %ERRORLEVEL% EQU 0 (
-    echo ✅ GUI build successful! Created dist\go-double-click-fix-gui.exe
+    echo ✅ GUI build successful! Created dist\click-guardian-gui.exe
 ) else (
     echo ❌ GUI build failed!
     goto console_build
@@ -28,10 +28,10 @@ if %ERRORLEVEL% EQU 0 (
 REM Build console version (with console window for debugging)
 :console_build
 echo Building console version...
-go build -ldflags "-s -w" -o dist\go-double-click-fix.exe .\cmd\doubleclick-fix
+go build -ldflags "-s -w" -o dist\click-guardian.exe .\cmd\click-guardian
 
 if %ERRORLEVEL% EQU 0 (
-    echo ✅ Console build successful! Created dist\go-double-click-fix.exe
+    echo ✅ Console build successful! Created dist\click-guardian.exe
 ) else (
     echo ❌ Console build failed!
     goto end
@@ -39,8 +39,8 @@ if %ERRORLEVEL% EQU 0 (
 
 echo.
 echo Build complete! Executables are in the dist folder.
-echo - dist\go-double-click-fix-gui.exe (recommended for normal use)
-echo - dist\go-double-click-fix.exe (for debugging/console output)
+echo - dist\click-guardian-gui.exe (recommended for normal use)
+echo - dist\click-guardian.exe (for debugging/console output)
 
 :end
 pause

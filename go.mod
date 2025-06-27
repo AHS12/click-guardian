@@ -1,4 +1,4 @@
-module go-double-click-fix
+module click-guardian
 
 go 1.24.1
 

@@ -10,9 +10,9 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 
-	"go-double-click-fix/internal/config"
-	"go-double-click-fix/internal/hooks"
-	"go-double-click-fix/internal/logger"
+	"click-guardian/internal/config"
+	"click-guardian/internal/hooks"
+	"click-guardian/internal/logger"
 )
 
 // Application represents the main GUI application
@@ -40,7 +40,7 @@ func NewApplication() *Application {
 	a.SetIcon(nil) // You can add an icon resource here if you have one
 
 	cfg := config.DefaultConfig()
-	w := a.NewWindow("Double Click Fix v1.0")
+	w := a.NewWindow("Click Guardian v1.0")
 
 	// Create log display
 	logText := widget.NewRichTextFromMarkdown("")
@@ -67,7 +67,7 @@ func (app *Application) Run() {
 	app.logger.Start()
 
 	// Initialize log
-	app.logger.Log("Double-Click Fix application started")
+	app.logger.Log("Click Guardian application started")
 	if !app.hook.IsSupported() {
 		app.logger.Log("❌ Mouse hooking not supported on this platform")
 	} else {

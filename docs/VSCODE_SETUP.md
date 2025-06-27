@@ -27,7 +27,7 @@ The `[darwin]` indicates VSCode is trying to process macOS-specific code on Wind
 - Platform-specific build environment
 - Optimized for Windows CGO compilation
 
-### 3. VSCode Workspace File (`go-double-click-fix.code-workspace`)
+### 3. VSCode Workspace File (`click-guardian.code-workspace`)
 
 - Provides workspace-level configuration
 - Recommended extensions for Go and C++ (needed for CGO)
@@ -42,7 +42,7 @@ The `[darwin]` indicates VSCode is trying to process macOS-specific code on Wind
 Open the workspace file instead of the folder:
 
 ```
-File → Open Workspace from File → go-double-click-fix.code-workspace
+File → Open Workspace from File → click-guardian.code-workspace
 ```
 
 Or reload VSCode window after the settings are applied:

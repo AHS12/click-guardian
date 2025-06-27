@@ -58,7 +58,7 @@ go mod download
 
 echo.
 echo Testing project build:
-go build -o dist\test-troubleshoot.exe .\cmd\doubleclick-fix
+go build -o dist\test-troubleshoot.exe .\cmd\click-guardian
 if %ERRORLEVEL% EQU 0 (
     echo ✅ Project builds successfully!
     del dist\test-troubleshoot.exe 2>nul

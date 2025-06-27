@@ -1,6 +1,6 @@
 # Build Scripts
 
-This directory contains build and development scripts for the Double Click Fix project.
+This directory contains build and development scripts for the Click Guardian project.
 
 ## Scripts
 
@@ -88,6 +88,6 @@ All builds output to the `dist/` directory, which is git-ignored.
 
 ### Naming Convention
 
-- `go-double-click-fix-gui.exe` - Windows GUI version (recommended)
-- `go-double-click-fix.exe` - Windows console version (debugging)
-- `go-double-click-fix-{os}-{arch}` - Cross-platform builds
+- `click-guardian-gui.exe` - Windows GUI version (recommended)
+- `click-guardian.exe` - Windows console version (debugging)
+- `click-guardian-{os}-{arch}` - Cross-platform builds
