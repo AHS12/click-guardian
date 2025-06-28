@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"image/color"
 	"strings"
+	"sync"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"fyne.io/systray"
 
@@ -20,25 +23,28 @@ import (
 
 // Application represents the main GUI application
 type Application struct {
-	app       fyne.App
-	window    fyne.Window
-	hook      hooks.MouseHook
-	logger    *logger.Logger
-	config    *config.Config
-	isRunning bool
-	isHidden  bool
+	app              fyne.App
+	window           fyne.Window
+	hook             hooks.MouseHook
+	logger           *logger.Logger
+	config           *config.Config
+	isRunning        bool
+	isHidden         bool
+	lastBlockedCount int
 
 	// UI components
 	delayInput          *widget.Entry
 	statusLabel         *widget.Label
 	statusIcon          *canvas.Circle
-	counterLabel        *widget.Label
+	counterText         *canvas.Text
+	blockedLabelText    *canvas.Text
 	toggleButton        *widget.Button
 	logText             *widget.RichText
 	logContainer        *container.Scroll
 	minimizeToTrayCheck *widget.Check
-	appIconWidget       *widget.Icon
+	// appIconWidget       *widget.Icon
 	updateChan          chan int
+	updateChanOnce      sync.Once
 
 	// System tray
 	trayRestore *systray.MenuItem
@@ -109,34 +115,37 @@ func (app *Application) Run() {
 }
 
 func (app *Application) setupUI() {
-	// Large app icon at the top
-	app.appIconWidget = widget.NewIcon(GetAppIcon())
-	// app.appIconWidget.Resize(fyne.NewSize(256, 256))
-
-	// App title - large and prominent
-	// appTitle := widget.NewLabel("CLICK GUARDIAN")
-	// appTitle.Alignment = fyne.TextAlignCenter
-	// appTitle.Importance = widget.HighImportance
-	// appTitle.TextStyle = fyne.TextStyle{Bold: true}
-
-	// Status indicator - larger circle for better visibility
+	// Status indicator circle
 	app.statusIcon = canvas.NewCircle(color.RGBA{R: 220, G: 53, B: 69, A: 255}) // Red for stopped
-	app.statusIcon.Resize(fyne.NewSize(200, 200))
 
-	// Large toggle button styled like a modern toggle switch
+	// Large toggle button
 	app.toggleButton = widget.NewButton("Start Protection", app.toggleProtection)
 	app.toggleButton.Importance = widget.HighImportance
-	app.toggleButton.Resize(fyne.NewSize(200, 60))
 
-	// Status text below toggle
+	// Status label (will be placed inside the circle)
 	app.statusLabel = widget.NewLabel("Protection Stopped")
 	app.statusLabel.Alignment = fyne.TextAlignCenter
-	app.statusLabel.Importance = widget.MediumImportance
 
-	// Protection counter - prominently displayed
-	app.counterLabel = widget.NewLabel("Blocked Clicks: 0")
-	app.counterLabel.Alignment = fyne.TextAlignCenter
-	app.counterLabel.Importance = widget.MediumImportance
+	// Counter label (will be placed inside the circle)
+	app.counterText = canvas.NewText("0", color.White)
+	app.counterText.Alignment = fyne.TextAlignCenter
+	app.counterText.TextStyle = fyne.TextStyle{Bold: true}
+	app.counterText.TextSize = 48
+
+	// Blocked label text
+	app.blockedLabelText = canvas.NewText("Blocked Double Clicks", color.White)
+	app.blockedLabelText.Alignment = fyne.TextAlignCenter
+	app.blockedLabelText.TextSize = 14
+
+	// Create the status indicator by stacking the circle and the labels
+	statusIndicator := container.NewStack(
+		app.statusIcon,
+		container.NewCenter(container.NewVBox(
+			app.blockedLabelText,
+			app.counterText,
+			layout.NewSpacer(),
+		)),
+	)
 
 	// Delay input with default value
 	app.delayInput = widget.NewEntry()
@@ -152,33 +161,34 @@ func (app *Application) setupUI() {
 		app.logger.Clear()
 	})
 
-	// Layout
-	// Header with very large app icon centered
-	headerContainer := container.NewVBox(
-		container.NewCenter(app.appIconWidget),
-		// container.NewCenter(appTitle),
-	)
+	// --- Layout ---
 
-	// Main control section with toggle button prominently placed
+	// Main control section with toggle button
 	controlSection := container.NewVBox(
 		container.NewCenter(app.toggleButton),
-		container.NewCenter(app.statusLabel),
 	)
 
-	// Status and statistics section - prominently displayed
+	// Status and statistics section with the new indicator
+	hoverIndicator := NewHoverAware(statusIndicator, func() string {
+		if app.isRunning {
+			return "Status: Active"
+		} else {
+			return "Status: Inactive"
+		}
+	})
+	statusIndicatorContainer := container.NewGridWrap(fyne.NewSize(200, 200), hoverIndicator)
+
 	statusStatsContainer := container.NewVBox(
-		container.NewCenter(
-			container.NewHBox(
-				app.statusIcon,
-				widget.NewLabel("  "), // spacing
-			),
-		),
-		container.NewCenter(app.counterLabel),
+		container.NewCenter(statusIndicatorContainer),
 	)
 
 	// Settings and input grouped together
-	configSection := container.NewVBox(
-		widget.NewLabel("Configuration:"),
+	configTitle := canvas.NewText("Configuration", color.White)
+	configTitle.TextStyle = fyne.TextStyle{Bold: true}
+	configTitle.TextSize = 16 // Reduced font size
+	configHeader := container.NewHBox(widget.NewIcon(theme.SettingsIcon()), configTitle)
+
+	configContent := container.NewVBox(
 		container.NewBorder(
 			widget.NewLabel("Delay (ms):"), nil, nil, nil,
 			app.delayInput,
@@ -186,22 +196,28 @@ func (app *Application) setupUI() {
 		app.minimizeToTrayCheck,
 	)
 
+	configSection := widget.NewCard("", "", container.NewVBox(
+		configHeader, // Left-aligned
+		configContent,
+	))
+
 	// Log section with clear button integrated
-	logHeaderContainer := container.NewBorder(
-		nil, nil, widget.NewLabel("Activity Log:"), clearButton,
-	)
+	logTitle := canvas.NewText("Activity Log", color.White)
+	logTitle.TextStyle = fyne.TextStyle{Bold: true}
+	logTitle.TextSize = 16
+	logHeader := container.NewHBox(widget.NewIcon(theme.ListIcon()), logTitle, layout.NewSpacer(), clearButton)
 
-	logSection := container.NewBorder(
-		logHeaderContainer, nil, nil, nil,
+	logSection := widget.NewCard("", "", container.NewVBox(
+		logHeader,
 		app.logContainer,
-	)
+	))
 
+	// Assemble the final content
 	content := container.NewVBox(
-		headerContainer,
-		widget.NewSeparator(),
-		controlSection,
-		widget.NewSeparator(),
+		canvas.NewRectangle(color.Transparent), // Top spacer
 		statusStatsContainer,
+		canvas.NewRectangle(color.Transparent), // Bottom spacer
+		controlSection,
 		widget.NewSeparator(),
 		configSection,
 		widget.NewSeparator(),
@@ -213,6 +229,7 @@ func (app *Application) setupUI() {
 	app.window.SetFixedSize(true) // Disable resizing and maximize button
 	app.window.CenterOnScreen()
 }
+
 
 // toggleProtection handles both start and stop protection
 func (app *Application) toggleProtection() {
@@ -248,7 +265,7 @@ func (app *Application) startProtection() {
 	app.isRunning = true
 	app.statusIcon.FillColor = color.RGBA{R: 40, G: 167, B: 69, A: 255} // Green for active
 	app.statusIcon.Refresh()
-	app.statusLabel.SetText("Protection Active")
+	// app.statusLabel.SetText("Protection Active")
 	app.toggleButton.SetText("Stop Protection")
 	app.toggleButton.Importance = widget.DangerImportance
 
@@ -259,7 +276,7 @@ func (app *Application) startProtection() {
 		app.logger.Log("❌ Failed to start protection: %v", err)
 		app.statusIcon.FillColor = color.RGBA{R: 255, G: 193, B: 7, A: 255} // Yellow for failed
 		app.statusIcon.Refresh()
-		app.statusLabel.SetText("Protection Failed")
+		// app.statusLabel.SetText("Protection Failed")
 		app.resetUI()
 	}
 }
@@ -279,7 +296,7 @@ func (app *Application) resetUI() {
 	app.isRunning = false
 	app.statusIcon.FillColor = color.RGBA{R: 220, G: 53, B: 69, A: 255} // Red for stopped
 	app.statusIcon.Refresh()
-	app.statusLabel.SetText("Protection Stopped")
+	// app.statusLabel.SetText("Protection Stopped")
 	app.toggleButton.SetText("Start Protection")
 	app.toggleButton.Importance = widget.HighImportance
 }
@@ -289,7 +306,9 @@ func (app *Application) cleanup() {
 		app.hook.Stop()
 	}
 	app.logger.Stop()
-	close(app.updateChan)
+	app.updateChanOnce.Do(func() {
+		close(app.updateChan)
+	})
 	systray.Quit()
 }
 
@@ -373,7 +392,25 @@ func (app *Application) updateBlockedClicksCounter() {
 func (app *Application) handleUIUpdates() {
 	for count := range app.updateChan {
 		fyne.Do(func() {
-			app.counterLabel.SetText(fmt.Sprintf("Blocked Clicks: %d", count))
+			// Animate if the count has increased
+			if count > app.lastBlockedCount {
+				originalSize := app.counterText.TextSize
+				anim := canvas.NewSizeAnimation(
+					fyne.NewSize(originalSize, originalSize),
+					fyne.NewSize(originalSize+10, originalSize+10),
+					time.Millisecond*100,
+					func(s fyne.Size) {
+						app.counterText.TextSize = s.Height
+						app.counterText.Refresh()
+					},
+				)
+				anim.AutoReverse = true
+				anim.Start()
+			}
+
+			app.lastBlockedCount = count
+			app.counterText.Text = fmt.Sprintf("%d", count)
+			app.counterText.Refresh()
 		})
 	}
 }

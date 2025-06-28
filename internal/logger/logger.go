@@ -3,6 +3,7 @@ package logger
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -17,6 +18,7 @@ type Logger struct {
 	logText         *widget.RichText
 	scrollContainer *container.Scroll
 	maxEntries      int
+	once            sync.Once
 }
 
 // NewLogger creates a new logger instance
@@ -50,7 +52,9 @@ func (l *Logger) Start() {
 
 // Stop closes the log channel
 func (l *Logger) Stop() {
-	close(l.logChannel)
+	l.once.Do(func() {
+		close(l.logChannel)
+	})
 }
 
 // Clear clears the log display
