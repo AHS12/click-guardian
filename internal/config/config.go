@@ -27,8 +27,8 @@ func DefaultConfig() *Config {
 
 // ValidateDelay validates the delay value
 func (c *Config) ValidateDelay() error {
-	if c.DelayMs < 1 || c.DelayMs > 5000 {
-		return fmt.Errorf("delay must be between 1 and 5000 milliseconds")
+	if c.DelayMs < 1 || c.DelayMs > 500 {
+		return fmt.Errorf("delay must be between 1 and 500 milliseconds")
 	}
 	return nil
 }
@@ -44,8 +44,8 @@ func ParseDelay(delayStr string) (int, error) {
 		return 0, fmt.Errorf("invalid delay format: %v", err)
 	}
 
-	if delayMs < 1 || delayMs > 5000 {
-		return 0, fmt.Errorf("delay must be between 1 and 5000 milliseconds")
+	if delayMs < 1 || delayMs > 500 {
+		return 0, fmt.Errorf("delay must be between 1 and 500 milliseconds")
 	}
 
 	return delayMs, nil

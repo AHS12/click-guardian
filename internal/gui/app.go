@@ -3,7 +3,6 @@ package gui
 import (
 	"fmt"
 	"image/color"
-	"strings"
 	"sync"
 	"time"
 
@@ -33,7 +32,8 @@ type Application struct {
 	lastBlockedCount int
 
 	// UI components
-	delayInput          *widget.Entry
+	delaySlider         *widget.Slider
+	delayValueLabel     *widget.Label
 	statusLabel         *widget.Label
 	statusIcon          *canvas.Circle
 	counterText         *canvas.Text
@@ -43,8 +43,8 @@ type Application struct {
 	logContainer        *container.Scroll
 	minimizeToTrayCheck *widget.Check
 	// appIconWidget       *widget.Icon
-	updateChan          chan int
-	updateChanOnce      sync.Once
+	updateChan     chan int
+	updateChanOnce sync.Once
 
 	// System tray
 	trayRestore *systray.MenuItem
@@ -147,10 +147,19 @@ func (app *Application) setupUI() {
 		)),
 	)
 
-	// Delay input with default value
-	app.delayInput = widget.NewEntry()
-	app.delayInput.SetText(fmt.Sprintf("%d", app.config.DelayMs))
-	app.delayInput.SetPlaceHolder("Delay in milliseconds")
+	// Delay slider with min 5ms, max 500ms
+	app.delaySlider = widget.NewSlider(5, 500)
+	app.delaySlider.SetValue(float64(app.config.DelayMs))
+	app.delaySlider.Step = 5 // 5ms increments
+
+	// Value label to show current slider value
+	app.delayValueLabel = widget.NewLabel(fmt.Sprintf("%d ms", app.config.DelayMs))
+	app.delayValueLabel.Alignment = fyne.TextAlignCenter
+
+	// Update label when slider value changes
+	app.delaySlider.OnChanged = func(value float64) {
+		app.delayValueLabel.SetText(fmt.Sprintf("%.0f ms", value))
+	}
 
 	// Minimize to tray checkbox
 	app.minimizeToTrayCheck = widget.NewCheck("Minimize to system tray when closing", nil)
@@ -189,9 +198,10 @@ func (app *Application) setupUI() {
 	configHeader := container.NewHBox(widget.NewIcon(theme.SettingsIcon()), configTitle)
 
 	configContent := container.NewVBox(
-		container.NewBorder(
-			widget.NewLabel("Delay (ms):"), nil, nil, nil,
-			app.delayInput,
+		container.NewVBox(
+			widget.NewLabel("Delay (ms):"),
+			app.delaySlider,
+			container.NewCenter(app.delayValueLabel),
 		),
 		app.minimizeToTrayCheck,
 	)
@@ -230,7 +240,6 @@ func (app *Application) setupUI() {
 	app.window.CenterOnScreen()
 }
 
-
 // toggleProtection handles both start and stop protection
 func (app *Application) toggleProtection() {
 	if app.isRunning {
@@ -250,17 +259,11 @@ func (app *Application) startProtection() {
 		return
 	}
 
-	delayText := strings.TrimSpace(app.delayInput.Text)
-	delayMs, err := config.ParseDelay(delayText)
-	if err != nil {
-		app.logger.Log("ERROR: %v", err)
-		return
-	}
+	// Get delay value from slider
+	delayMs := int(app.delaySlider.Value)
 
-	// Update input field with validated value
-	if delayText == "" {
-		app.delayInput.SetText(fmt.Sprintf("%d", delayMs))
-	}
+	// Disable slider when protection is active
+	app.delaySlider.Disable()
 
 	app.isRunning = true
 	app.statusIcon.FillColor = color.RGBA{R: 40, G: 167, B: 69, A: 255} // Green for active
@@ -271,7 +274,7 @@ func (app *Application) startProtection() {
 
 	app.logger.Log("Starting double-click protection with %d ms delay", delayMs)
 
-	err = app.hook.Start(time.Duration(delayMs)*time.Millisecond, app.logger.GetChannel())
+	err := app.hook.Start(time.Duration(delayMs)*time.Millisecond, app.logger.GetChannel())
 	if err != nil {
 		app.logger.Log("❌ Failed to start protection: %v", err)
 		app.statusIcon.FillColor = color.RGBA{R: 255, G: 193, B: 7, A: 255} // Yellow for failed
@@ -299,6 +302,9 @@ func (app *Application) resetUI() {
 	// app.statusLabel.SetText("Protection Stopped")
 	app.toggleButton.SetText("Start Protection")
 	app.toggleButton.Importance = widget.HighImportance
+
+	// Re-enable slider when protection is stopped
+	app.delaySlider.Enable()
 }
 
 func (app *Application) cleanup() {

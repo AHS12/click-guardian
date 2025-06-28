@@ -11,7 +11,7 @@
 ## Features
 
 - 🎯 **Smart Click Protection**: Prevents double-clicks within a specified time window
-- ⚙️ **Customizable Delay**: Set delay from 1ms to 5000ms (default: 50ms)
+- ⚙️ **Customizable Delay**: Set delay from 5ms to 500ms (default: 50ms)
 - 📊 **Real-time Logging**: See exactly which clicks are allowed or blocked
 - 🖥️ **Modern GUI**: Clean and intuitive Fyne-based interface
 - 🚀 **Lightweight**: Minimal resource usage
@@ -29,7 +29,7 @@ _Future Enhancement_: A total blocked clicks counter will be added to track over
 
 ## Quick Start
 
-1. **Set Delay**: Enter your desired delay in milliseconds (1-5000ms)
+1. **Set Delay**: Enter your desired delay in milliseconds (5-500ms)
 2. **Start Protection**: Click "Start Protection" to begin monitoring clicks
 3. **Monitor Activity**: Watch the real-time log showing allowed/blocked clicks
 4. **Stop Protection**: Click "Stop Protection" when finished
