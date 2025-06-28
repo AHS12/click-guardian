@@ -16,6 +16,7 @@
             "-tags=windows"
         ],
         "go.useLanguageServer": true,
+        "go.testTags": "windows",
         "gopls": {
             "build.buildFlags": ["-tags=windows"],
             "build.env": {
