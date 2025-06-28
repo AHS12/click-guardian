@@ -1,6 +1,12 @@
-# Click Guardian
+# Click Guardian 🛡️
 
-A Windows application that prevents accidental double-clicks by introducing a customizable delay between mouse clicks.
+<p align="center">
+  <img src="assets/icon-modern-shield.svg" alt="Click Guardian Logo" width="128" height="128">
+</p>
+
+<p align="center">
+  <strong>A Windows application that prevents accidental double-clicks by introducing a customizable delay between mouse clicks.</strong>
+</p>
 
 ## Features
 

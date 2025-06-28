@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"fyne.io/systray"
 
 	"click-guardian/internal/config"
 	"click-guardian/internal/hooks"
@@ -23,21 +24,27 @@ type Application struct {
 	logger    *logger.Logger
 	config    *config.Config
 	isRunning bool
+	isHidden  bool
 
 	// UI components
-	delayInput   *widget.Entry
-	statusLabel  *widget.Label
-	counterLabel *widget.Label
-	startButton  *widget.Button
-	stopButton   *widget.Button
-	logText      *widget.RichText
-	logContainer *container.Scroll
+	delayInput          *widget.Entry
+	statusLabel         *widget.Label
+	counterLabel        *widget.Label
+	startButton         *widget.Button
+	stopButton          *widget.Button
+	logText             *widget.RichText
+	logContainer        *container.Scroll
+	minimizeToTrayCheck *widget.Check
+
+	// System tray
+	trayRestore *systray.MenuItem
+	trayQuit    *systray.MenuItem
 }
 
 // NewApplication creates a new GUI application
 func NewApplication() *Application {
 	a := app.New()
-	a.SetIcon(nil) // You can add an icon resource here if you have one
+	a.SetIcon(GetAppIcon()) // Use our modern shield icon
 
 	cfg := config.DefaultConfig()
 	w := a.NewWindow("Click Guardian v1.0")
@@ -64,6 +71,7 @@ func NewApplication() *Application {
 // Run starts the application
 func (app *Application) Run() {
 	app.setupUI()
+	app.setupSystemTray()
 	app.logger.Start()
 
 	// Initialize log
@@ -74,9 +82,18 @@ func (app *Application) Run() {
 		app.logger.Log("Enter a delay value and click 'Start Protection' to begin")
 	}
 
+	// Set window close behavior based on checkbox
+	app.window.SetCloseIntercept(func() {
+		if app.minimizeToTrayCheck.Checked {
+			app.minimizeToTray()
+		} else {
+			app.quitApplication()
+		}
+	})
+
 	app.window.ShowAndRun()
 
-	// Cleanup when window closes
+	// Cleanup when application finally quits
 	app.cleanup()
 }
 
@@ -94,9 +111,18 @@ func (app *Application) setupUI() {
 	app.counterLabel = widget.NewLabel("Blocked Clicks: 0")
 	app.counterLabel.Importance = widget.LowImportance
 
+	// Minimize to tray checkbox
+	app.minimizeToTrayCheck = widget.NewCheck("Close button minimizes to tray (instead of quitting)", nil)
+	app.minimizeToTrayCheck.SetChecked(true) // Default to true for backwards compatibility
+
 	// Clear log button
 	clearButton := widget.NewButton("Clear Log", func() {
 		app.logger.Clear()
+	})
+
+	// Minimize to tray button
+	minimizeButton := widget.NewButton("Minimize to Tray", func() {
+		app.minimizeToTray()
 	})
 
 	// Control buttons
@@ -118,6 +144,14 @@ func (app *Application) setupUI() {
 		app.stopButton,
 		widget.NewSeparator(),
 		clearButton,
+		widget.NewSeparator(),
+		minimizeButton,
+	)
+
+	// Settings section
+	settingsSection := container.NewVBox(
+		widget.NewLabel("Settings:"),
+		app.minimizeToTrayCheck,
 	)
 
 	logSection := container.NewBorder(
@@ -131,11 +165,14 @@ func (app *Application) setupUI() {
 		inputForm,
 		buttonContainer,
 		widget.NewSeparator(),
+		settingsSection,
+		widget.NewSeparator(),
 		logSection,
 	)
 
 	app.window.SetContent(content)
 	app.window.Resize(fyne.NewSize(float32(app.config.WindowWidth), float32(app.config.WindowHeight)))
+	app.window.SetFixedSize(true) // Disable resizing and maximize button
 	app.window.CenterOnScreen()
 }
 
@@ -198,4 +235,63 @@ func (app *Application) cleanup() {
 		app.hook.Stop()
 	}
 	app.logger.Stop()
+	systray.Quit()
+}
+
+// setupSystemTray initializes the system tray
+func (app *Application) setupSystemTray() {
+	go func() {
+		systray.Run(app.onTrayReady, app.onTrayExit)
+	}()
+}
+
+// onTrayReady is called when the system tray is ready
+func (app *Application) onTrayReady() {
+	// Set the system tray icon
+	systray.SetIcon(getTrayIcon())
+	systray.SetTitle("Click Guardian")
+	systray.SetTooltip("Click Guardian - Double-click Protection")
+
+	app.trayRestore = systray.AddMenuItem("Show Click Guardian", "Restore the application window")
+	systray.AddSeparator()
+	app.trayQuit = systray.AddMenuItem("Quit Application", "Completely quit the application")
+
+	// Handle tray menu clicks
+	go func() {
+		for {
+			select {
+			case <-app.trayRestore.ClickedCh:
+				app.showFromTray()
+			case <-app.trayQuit.ClickedCh:
+				app.quitApplication()
+				return
+			}
+		}
+	}()
+}
+
+// onTrayExit is called when the system tray exits
+func (app *Application) onTrayExit() {
+	// Cleanup if needed
+}
+
+// minimizeToTray hides the window and shows a notification
+func (app *Application) minimizeToTray() {
+	app.window.Hide()
+	app.isHidden = true
+	app.logger.Log("Application minimized to system tray")
+}
+
+// showFromTray shows the window from the system tray
+func (app *Application) showFromTray() {
+	app.window.Show()
+	app.isHidden = false
+	app.logger.Log("Application restored from system tray")
+}
+
+// quitApplication properly closes the application
+func (app *Application) quitApplication() {
+	app.cleanup()
+	systray.Quit()
+	app.app.Quit()
 }

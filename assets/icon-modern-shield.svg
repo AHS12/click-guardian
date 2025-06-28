@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+    <!-- Shield outline -->
+    <path d="M128 30L70 65v75c0 35 58 86 58 86s58-51 58-86V65z"
+        fill="#E3F2FD" stroke="#1976D2" stroke-width="4" />
+
+    <!-- Inner shield -->
+    <path d="M128 45L85 75v60c0 25 43 65 43 65s43-40 43-65V75z"
+        fill="#2196F3" />
+
+    <!-- Mouse cursor with modern design -->
+    <g transform="translate(118, 105)">
+        <path d="M0 0L0 28L6 22L10 32L14 30L10 20L20 20z"
+            fill="#FFFFFF" stroke="#0D47A1" stroke-width="1.2" />
+        <!-- Click indicator -->
+        <circle cx="2" cy="4" r="4" fill="none" stroke="#FF5722" stroke-width="2" opacity="0.9" />
+        <circle cx="2" cy="4" r="8" fill="none" stroke="#FF5722" stroke-width="1" opacity="0.6" />
+    </g>
+</svg>
