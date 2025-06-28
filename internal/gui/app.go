@@ -2,11 +2,13 @@ package gui
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"fyne.io/systray"
@@ -29,12 +31,14 @@ type Application struct {
 	// UI components
 	delayInput          *widget.Entry
 	statusLabel         *widget.Label
+	statusIcon          *canvas.Circle
 	counterLabel        *widget.Label
-	startButton         *widget.Button
-	stopButton          *widget.Button
+	toggleButton        *widget.Button
 	logText             *widget.RichText
 	logContainer        *container.Scroll
 	minimizeToTrayCheck *widget.Check
+	appIconWidget       *widget.Icon
+	updateChan          chan int
 
 	// System tray
 	trayRestore *systray.MenuItem
@@ -65,6 +69,7 @@ func NewApplication() *Application {
 		config:       cfg,
 		logText:      logText,
 		logContainer: logContainer,
+		updateChan:   make(chan int, 10),
 	}
 }
 
@@ -82,6 +87,12 @@ func (app *Application) Run() {
 		app.logger.Log("Enter a delay value and click 'Start Protection' to begin")
 	}
 
+	// Start a goroutine to update the blocked clicks counter
+	go app.updateBlockedClicksCounter()
+
+	// Start a goroutine to handle UI updates safely
+	go app.handleUIUpdates()
+
 	// Set window close behavior based on checkbox
 	app.window.SetCloseIntercept(func() {
 		if app.minimizeToTrayCheck.Checked {
@@ -98,74 +109,101 @@ func (app *Application) Run() {
 }
 
 func (app *Application) setupUI() {
+	// Large app icon at the top
+	app.appIconWidget = widget.NewIcon(GetAppIcon())
+	app.appIconWidget.Resize(fyne.NewSize(80, 80))
+
+	// App title - large and prominent
+	appTitle := widget.NewLabel("CLICK GUARDIAN")
+	appTitle.Alignment = fyne.TextAlignCenter
+	appTitle.Importance = widget.HighImportance
+	appTitle.TextStyle = fyne.TextStyle{Bold: true}
+
+	// Status indicator - larger circle for better visibility
+	app.statusIcon = canvas.NewCircle(color.RGBA{R: 220, G: 53, B: 69, A: 255}) // Red for stopped
+	app.statusIcon.Resize(fyne.NewSize(32, 32))
+
+	// Large toggle button styled like a modern toggle switch
+	app.toggleButton = widget.NewButton("Start Protection", app.toggleProtection)
+	app.toggleButton.Importance = widget.HighImportance
+	app.toggleButton.Resize(fyne.NewSize(200, 60))
+
+	// Status text below toggle
+	app.statusLabel = widget.NewLabel("Protection Stopped")
+	app.statusLabel.Alignment = fyne.TextAlignCenter
+	app.statusLabel.Importance = widget.MediumImportance
+
+	// Protection counter - prominently displayed
+	app.counterLabel = widget.NewLabel("Blocked Clicks: 0")
+	app.counterLabel.Alignment = fyne.TextAlignCenter
+	app.counterLabel.Importance = widget.MediumImportance
+
 	// Delay input with default value
 	app.delayInput = widget.NewEntry()
 	app.delayInput.SetText(fmt.Sprintf("%d", app.config.DelayMs))
-	app.delayInput.SetPlaceHolder("Delay in milliseconds (e.g., 50)")
-
-	// Status label
-	app.statusLabel = widget.NewLabel("Status: Stopped")
-	app.statusLabel.Importance = widget.MediumImportance
-
-	// Blocked clicks counter
-	app.counterLabel = widget.NewLabel("Blocked Clicks: 0")
-	app.counterLabel.Importance = widget.LowImportance
+	app.delayInput.SetPlaceHolder("Delay in milliseconds")
 
 	// Minimize to tray checkbox
-	app.minimizeToTrayCheck = widget.NewCheck("Close button minimizes to tray (instead of quitting)", nil)
-	app.minimizeToTrayCheck.SetChecked(true) // Default to true for backwards compatibility
+	app.minimizeToTrayCheck = widget.NewCheck("Minimize to system tray when closing", nil)
+	app.minimizeToTrayCheck.SetChecked(true)
 
 	// Clear log button
 	clearButton := widget.NewButton("Clear Log", func() {
 		app.logger.Clear()
 	})
 
-	// Minimize to tray button
-	minimizeButton := widget.NewButton("Minimize to Tray", func() {
-		app.minimizeToTray()
-	})
-
-	// Control buttons
-	app.startButton = widget.NewButton("Start Protection", app.startProtection)
-	app.stopButton = widget.NewButton("Stop Protection", app.stopProtection)
-
-	// Style buttons
-	app.startButton.Importance = widget.HighImportance
-	app.stopButton.Importance = widget.MediumImportance
-
 	// Layout
-	inputForm := container.NewBorder(
-		widget.NewLabel("Double-Click Delay (ms):"), nil, nil, nil,
-		app.delayInput,
+	// Header with very large app icon centered
+	headerContainer := container.NewVBox(
+		container.NewCenter(app.appIconWidget),
+		container.NewCenter(appTitle),
 	)
 
-	buttonContainer := container.NewHBox(
-		app.startButton,
-		app.stopButton,
-		widget.NewSeparator(),
-		clearButton,
-		widget.NewSeparator(),
-		minimizeButton,
+	// Main control section with toggle button prominently placed
+	controlSection := container.NewVBox(
+		container.NewCenter(app.toggleButton),
+		container.NewCenter(app.statusLabel),
 	)
 
-	// Settings section
-	settingsSection := container.NewVBox(
-		widget.NewLabel("Settings:"),
+	// Status and statistics section - prominently displayed
+	statusStatsContainer := container.NewVBox(
+		container.NewCenter(
+			container.NewHBox(
+				app.statusIcon,
+				widget.NewLabel("  "), // spacing
+			),
+		),
+		container.NewCenter(app.counterLabel),
+	)
+
+	// Settings and input grouped together
+	configSection := container.NewVBox(
+		widget.NewLabel("Configuration:"),
+		container.NewBorder(
+			widget.NewLabel("Delay (ms):"), nil, nil, nil,
+			app.delayInput,
+		),
 		app.minimizeToTrayCheck,
 	)
 
+	// Log section with clear button integrated
+	logHeaderContainer := container.NewBorder(
+		nil, nil, widget.NewLabel("Activity Log:"), clearButton,
+	)
+
 	logSection := container.NewBorder(
-		widget.NewLabel("Activity Log:"), nil, nil, nil,
+		logHeaderContainer, nil, nil, nil,
 		app.logContainer,
 	)
 
 	content := container.NewVBox(
-		app.statusLabel,
+		headerContainer,
 		widget.NewSeparator(),
-		inputForm,
-		buttonContainer,
+		controlSection,
 		widget.NewSeparator(),
-		settingsSection,
+		statusStatsContainer,
+		widget.NewSeparator(),
+		configSection,
 		widget.NewSeparator(),
 		logSection,
 	)
@@ -174,6 +212,15 @@ func (app *Application) setupUI() {
 	app.window.Resize(fyne.NewSize(float32(app.config.WindowWidth), float32(app.config.WindowHeight)))
 	app.window.SetFixedSize(true) // Disable resizing and maximize button
 	app.window.CenterOnScreen()
+}
+
+// toggleProtection handles both start and stop protection
+func (app *Application) toggleProtection() {
+	if app.isRunning {
+		app.stopProtection()
+	} else {
+		app.startProtection()
+	}
 }
 
 func (app *Application) startProtection() {
@@ -199,15 +246,20 @@ func (app *Application) startProtection() {
 	}
 
 	app.isRunning = true
-	app.statusLabel.SetText("Status: Running")
-	app.startButton.SetText("Running...")
-	app.startButton.Disable()
+	app.statusIcon.FillColor = color.RGBA{R: 40, G: 167, B: 69, A: 255} // Green for active
+	app.statusIcon.Refresh()
+	app.statusLabel.SetText("Protection Active")
+	app.toggleButton.SetText("Stop Protection")
+	app.toggleButton.Importance = widget.DangerImportance
 
 	app.logger.Log("Starting double-click protection with %d ms delay", delayMs)
 
 	err = app.hook.Start(time.Duration(delayMs)*time.Millisecond, app.logger.GetChannel())
 	if err != nil {
 		app.logger.Log("❌ Failed to start protection: %v", err)
+		app.statusIcon.FillColor = color.RGBA{R: 255, G: 193, B: 7, A: 255} // Yellow for failed
+		app.statusIcon.Refresh()
+		app.statusLabel.SetText("Protection Failed")
 		app.resetUI()
 	}
 }
@@ -225,9 +277,11 @@ func (app *Application) stopProtection() {
 
 func (app *Application) resetUI() {
 	app.isRunning = false
-	app.statusLabel.SetText("Status: Stopped")
-	app.startButton.SetText("Start Protection")
-	app.startButton.Enable()
+	app.statusIcon.FillColor = color.RGBA{R: 220, G: 53, B: 69, A: 255} // Red for stopped
+	app.statusIcon.Refresh()
+	app.statusLabel.SetText("Protection Stopped")
+	app.toggleButton.SetText("Start Protection")
+	app.toggleButton.Importance = widget.HighImportance
 }
 
 func (app *Application) cleanup() {
@@ -235,6 +289,7 @@ func (app *Application) cleanup() {
 		app.hook.Stop()
 	}
 	app.logger.Stop()
+	close(app.updateChan)
 	systray.Quit()
 }
 
@@ -294,4 +349,32 @@ func (app *Application) quitApplication() {
 	app.cleanup()
 	systray.Quit()
 	app.app.Quit()
+}
+
+// updateBlockedClicksCounter continuously updates the blocked clicks display
+func (app *Application) updateBlockedClicksCounter() {
+	ticker := time.NewTicker(500 * time.Millisecond) // Update every 500ms
+	defer ticker.Stop()
+
+	for range ticker.C {
+		if app.hook != nil {
+			count := app.hook.GetBlockedCount()
+			// Send the count to the UI update channel
+			select {
+			case app.updateChan <- count:
+			default:
+				// Don't block if channel is full
+			}
+		}
+	}
+}
+
+// handleUIUpdates safely handles UI updates from the main thread
+func (app *Application) handleUIUpdates() {
+	for count := range app.updateChan {
+		fyne.Do(func() {
+			app.counterLabel.SetText(fmt.Sprintf("Blocked Clicks: %d", count))
+		})
+		
+	}
 }
