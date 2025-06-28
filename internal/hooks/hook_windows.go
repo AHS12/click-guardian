@@ -148,7 +148,7 @@ func LowLevelMouseProc(nCode C.int, wParam C.WPARAM, lParam C.LPARAM) C.LRESULT 
 		holdDuration := now.Sub(lastDown)
 
 		// Block UP events that occur too quickly after a DOWN event
-		if !globalHook.buttonPressed[downEvent] || (!lastUp.IsZero() && upInterval < 30*time.Millisecond) {
+		if !globalHook.buttonPressed[downEvent] || (!lastUp.IsZero() && upInterval < globalHook.getEffectiveDelay(downEvent)) {
 			globalHook.sendLog(fmt.Sprintf("🛑 STRICT BLOCK: %s spurious UP (%.0fms after previous UP)", buttonName, float64(upInterval.Nanoseconds())/1000000))
 			return 1
 		}
