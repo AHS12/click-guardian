@@ -10,9 +10,9 @@
 
 ## Features
 
-- 🎯 **Smart Click Protection**: Prevents double-clicks within a specified time window
+- 🎯 **Strict Double-Click Blocking**: Ensures no double-clicks are allowed under any circumstances
 - ⚙️ **Customizable Delay**: Set delay from 5ms to 500ms (default: 50ms)
-- 📊 **Real-time Logging**: See exactly which clicks are allowed or blocked
+- 📊 **Real-time Logging**: Detailed logs for allowed and blocked clicks, including reasons and timestamps
 - 🖥️ **Modern GUI**: Clean and intuitive Fyne-based interface
 - 🚀 **Lightweight**: Minimal resource usage
 - 🛡️ **Safe**: Only monitors clicks, doesn't interfere with other mouse operations
@@ -22,10 +22,10 @@
 The application installs a low-level mouse hook that monitors left and right mouse button clicks. When a click is detected:
 
 1. **First Click**: Always allowed and logged
-2. **Subsequent Clicks**: Only allowed if they occur after the specified delay period for that specific button
+2. **Subsequent Clicks**: Strictly blocked if they occur within the specified delay period for that specific button
 3. **Independent Timers**: Left and right mouse buttons have separate timers - switching between buttons doesn't reset the protection
 
-_Future Enhancement_: A total blocked clicks counter will be added to track overall protection effectiveness.
+_Future Enhancement_: Adaptive delay logic dynamically adjusts based on click patterns to improve usability and strictness.
 
 ## Quick Start
 
@@ -45,7 +45,6 @@ _Coming soon - pre-built executables will be available from the releases page_
 ### Build from Source
 
 For detailed build instructions, see [**Development Guide**](docs/DEVELOPMENT.md)
-
 
 ## Configuration
 
