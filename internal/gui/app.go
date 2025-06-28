@@ -281,6 +281,9 @@ func (app *Application) startProtection() {
 		app.statusIcon.Refresh()
 		// app.statusLabel.SetText("Protection Failed")
 		app.resetUI()
+	} else {
+		// Update tray tooltip when protection starts successfully
+		app.updateTrayTooltip()
 	}
 }
 
@@ -305,6 +308,9 @@ func (app *Application) resetUI() {
 
 	// Re-enable slider when protection is stopped
 	app.delaySlider.Enable()
+
+	// Update tray tooltip when protection stops
+	app.updateTrayTooltip()
 }
 
 func (app *Application) cleanup() {
@@ -330,7 +336,9 @@ func (app *Application) onTrayReady() {
 	// Set the system tray icon
 	systray.SetIcon(getTrayIcon())
 	systray.SetTitle("Click Guardian")
-	systray.SetTooltip("Click Guardian - Double-click Protection")
+
+	// Set initial tooltip
+	app.updateTrayTooltip()
 
 	app.trayRestore = systray.AddMenuItem("Show Click Guardian", "Restore the application window")
 	systray.AddSeparator()
@@ -412,6 +420,13 @@ func (app *Application) handleUIUpdates() {
 				)
 				anim.AutoReverse = true
 				anim.Start()
+
+				// Update tray tooltip when count changes (only if protection is active)
+				if app.isRunning {
+					blockedCount := app.hook.GetBlockedCount()
+					tooltip := fmt.Sprintf("Click Guardian - Active\nBlocked clicks: %d", blockedCount)
+					systray.SetTooltip(tooltip)
+				}
 			}
 
 			app.lastBlockedCount = count
@@ -419,4 +434,18 @@ func (app *Application) handleUIUpdates() {
 			app.counterText.Refresh()
 		})
 	}
+}
+
+// updateTrayTooltip updates the system tray tooltip with current status and blocked count
+func (app *Application) updateTrayTooltip() {
+	// Ensure this runs on the main thread
+	fyne.Do(func() {
+		if app.isRunning {
+			blockedCount := app.hook.GetBlockedCount()
+			tooltip := fmt.Sprintf("Click Guardian - Active\nBlocked clicks: %d", blockedCount)
+			systray.SetTooltip(tooltip)
+		} else {
+			systray.SetTooltip("Click Guardian - Inactive")
+		}
+	})
 }
