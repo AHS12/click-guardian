@@ -7,30 +7,122 @@ click-guardian/
 ├── cmd/
 │   └── click-guardian/          # Main application entry point
 │       └── main.go
-├── internal/                     # Private application code
-│   ├── config/                   # Configuration management
-│   ├── gui/                      # GUI application logic
-│   ├── hooks/                    # Platform-specific mouse hooks
-│   └── logger/                   # Logging functionality
-├── pkg/                          # Public packages (for future use)
-│   └── platform/                 # Platform detection utilities
-├── scripts/                      # Build and development scripts
-├── dist/                         # Build outputs (git ignored)
-├── docs/                         # Documentation
-└── assets/                       # Static assets (icons, etc.)
+├── internal/                    # Private application code
+│   ├── config/                  # Configuration management
+│   │   └── config.go
+│   ├── gui/                     # GUI application logic
+│   │   ├── app.go
+│   │   ├── icon.go
+│   │   ├── resources.go         # Auto-generated Fyne resources
+│   │   └── tray-icon.ico
+│   ├── hooks/                   # Platform-specific mouse hooks
+│   │   ├── hook.go
+│   │   ├── hook_windows.go      # Windows implementation
+│   │   └── hook_unsupported.go  # Fallback for other platforms
+│   └── logger/                  # Logging functionality
+│       └── logger.go
+├── pkg/                         # Public packages (for future use)
+│   └── platform/                # Platform detection utilities
+│       └── platform.go
+├── scripts/                     # Build and development scripts
+│   ├── build.bat               # Windows build script
+│   ├── build.sh                # Cross-platform build script
+│   ├── dev.bat                 # Development runner
+│   ├── troubleshoot.bat        # VSCode troubleshooting
+│   └── README.md               # Scripts documentation
+├── docs/                        # Documentation
+│   ├── BUILD.md
+│   ├── DEVELOPMENT.md          # This file
+│   └── VSCODE_SETUP.md         # VSCode configuration guide
+├── assets/                      # Static assets
+│   ├── icon-modern-shield.svg          # Original icon
+│   ├── icon-modern-shield-solid.svg    # Current app icon (Fyne-compatible)
+│   └── icon-modern-shield-simplified.svg
+├── dist/                        # Build outputs (git ignored)
+├── .vscode/                     # VSCode configuration
+├── click-guardian.code-workspace # VSCode workspace file
+├── go.mod
+├── go.sum
+└── README.md
 ```
 
-## Building
+## Installation & Building
 
-### Windows Development
+### Prerequisites
+
+- **Windows operating system** (current platform)
+- **Go 1.24.1 or later**
+- **CGO enabled** (for Windows API integration)
+
+### Quick Start
+
+1. **Clone the repository:**
+
+   ```bash
+   git clone [repository-url]
+   cd click-guardian
+   ```
+
+2. **Install dependencies:**
+
+   ```bash
+   go mod tidy
+   ```
+
+3. **Build and run:**
+
+   ```bash
+   # Quick development build and run
+   scripts\dev.bat
+
+   # Production build
+   scripts\build.bat
+   ```
+
+### Manual Build Options
 
 ```bash
-# Run in development mode
-scripts\dev.bat
+# Build for current platform
+go build -o dist\click-guardian.exe .\cmd\click-guardian
 
-# Build for production
-scripts\build.bat
+# Build with specific flags (production)
+go build -ldflags="-s -w" -o dist\click-guardian.exe .\cmd\click-guardian
 ```
+
+### Running the Application
+
+After building, run the executable:
+
+```bash
+dist\click-guardian.exe
+```
+
+**For Development:**
+
+```bash
+scripts\dev.bat
+```
+
+### VSCode Setup
+
+**Recommended:** Open the workspace file for optimal configuration:
+
+```
+File → Open Workspace from File → click-guardian.code-workspace
+```
+
+This workspace file includes:
+
+- Go-specific settings optimized for CGO and Fyne
+- Platform-specific build constraints
+- Recommended extensions for Go and C++ development
+- Troubleshooting configurations for cross-platform dependencies
+
+**Troubleshooting VSCode Issues:**
+
+- Run `scripts\troubleshoot.bat` for automated diagnosis
+- See `docs/VSCODE_SETUP.md` for detailed solutions
+- Reload window: `Ctrl+Shift+P` → "Developer: Reload Window"
 
 ### Cross-platform Build
 
@@ -95,7 +187,27 @@ Planned support:
 
 ## Development Tips
 
-- Use `scripts/dev.bat` for quick testing
-- Check `internal/hooks/hook_unsupported.go` for reference implementation
-- All builds output to `dist/` directory
-- Use the console version for debugging output
+- **Use `scripts/dev.bat`** for quick testing during development
+- **Check `internal/hooks/hook_unsupported.go`** for reference implementation
+- **All builds output to `dist/` directory** (git ignored)
+- **Open the `.code-workspace` file** instead of the folder for best VSCode experience
+- **Use the console version** for debugging output
+- **Icon resources** are auto-generated in `internal/gui/resources.go` using `fyne bundle`
+
+## Project Configuration
+
+### Icon Management
+
+The application uses SVG icons that are converted to Go resources:
+
+```bash
+# Regenerate icon resources (if you update icons)
+fyne bundle -o internal/gui/resources.go assets/icon-modern-shield-solid.svg
+```
+
+### Build Scripts
+
+- `scripts/build.bat` - Windows production build
+- `scripts/dev.bat` - Development build and run
+- `scripts/troubleshoot.bat` - VSCode/Go environment diagnosis
+- `scripts/build.sh` - Cross-platform build script (future)

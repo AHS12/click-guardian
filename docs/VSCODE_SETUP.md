@@ -1,6 +1,6 @@
 # VSCode Go Extension Configuration
 
-This file helps resolve platform-specific build constraint issues in VSCode.
+This guide helps you set up VSCode for optimal Go + Fyne development with this project.
 
 ## The Problem
 
@@ -12,46 +12,31 @@ error while importing fyne.io/fyne/v2/internal/painter/gl: build constraints exc
 
 The `[darwin]` indicates VSCode is trying to process macOS-specific code on Windows.
 
-## Solutions Applied
+## Solution: Use the Workspace File
 
-### 1. Workspace Settings (`.vscode/settings.json`)
+This project includes a pre-configured VSCode workspace file that solves all these issues automatically.
 
-- Forces CGO_ENABLED=1 for Fyne
-- Sets GOOS=windows explicitly
-- Configures gopls with Windows-specific build flags
-- Disables problematic static analysis
+### Setup Instructions
 
-### 2. Gopls Configuration (`gopls.yaml`)
-
-- Root-level gopls configuration file
-- Platform-specific build environment
-- Optimized for Windows CGO compilation
-
-### 3. VSCode Workspace File (`click-guardian.code-workspace`)
-
-- Provides workspace-level configuration
-- Recommended extensions for Go and C++ (needed for CGO)
-
-### 4. Build Constraints
-
-- Platform-specific build tags in hook files
-- Prevents cross-platform compilation issues
-
-### 3. Usage
-
-Open the workspace file instead of the folder:
+**Open the workspace file instead of the folder:**
 
 ```
 File → Open Workspace from File → click-guardian.code-workspace
 ```
 
-Or reload VSCode window after the settings are applied:
+### What the Workspace File Provides
 
-```
-Ctrl+Shift+P → "Developer: Reload Window"
-```
+The workspace file (`click-guardian.code-workspace`) includes:
 
-### 4. Troubleshooting Script
+- **Go + CGO + Fyne optimized settings** - Forces CGO_ENABLED=1, sets GOOS=windows
+- **Platform-specific build constraints** - Configures gopls with Windows-specific build flags
+- **Recommended extensions** - Go and C++ extensions (needed for CGO)
+- **Optimized gopls configuration** - Disables problematic static analysis
+- **Build environment setup** - Platform-specific build environment
+
+## Troubleshooting
+
+### Automated Diagnosis
 
 Run the automated troubleshooting script:
 
@@ -66,38 +51,35 @@ This script will:
 - Verify project builds
 - Clean and refresh dependencies
 
-## Alternative Solutions
+### Manual Steps
 
-If the error persists, try these steps:
+If issues persist after using the workspace file:
 
-### 1. Clear Go Module Cache
+**1. Restart Go Language Server**
+
+- `Ctrl+Shift+P` → "Go: Restart Language Server"
+
+**2. Update Go Tools**
+
+- `Ctrl+Shift+P` → "Go: Install/Update Tools"
+- Select all tools and update
+
+**3. Clear Go Module Cache**
 
 ```bash
 go clean -modcache
 go mod download
 ```
 
-### 2. Restart Go Language Server
-
-- `Ctrl+Shift+P`
-- Type "Go: Restart Language Server"
-
-### 3. Update Go Tools
-
-- `Ctrl+Shift+P`
-- Type "Go: Install/Update Tools"
-- Select all tools and update
-
-### 4. Environment Variables
-
-Add to your system environment or `.bashrc`:
+**4. Reload VSCode Window**
 
 ```bash
-export CGO_ENABLED=1
-export GOOS=windows
-export GOARCH=amd64
+Ctrl+Shift+P → "Developer: Reload Window"
 ```
 
-## Note
+## Important Notes
 
-These errors are cosmetic in VSCode - your builds will work fine regardless. The configuration files help VSCode's language server understand your platform-specific setup better.
+- **Always use the workspace file** - Don't open the folder directly
+- **These errors are cosmetic** - Your builds will work fine regardless
+- **The workspace file handles everything** - No manual configuration needed
+- **CGO is required** - For Windows API integration with Fyne

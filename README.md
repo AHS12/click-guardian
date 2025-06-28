@@ -23,8 +23,11 @@ The application installs a low-level mouse hook that monitors left and right mou
 
 1. **First Click**: Always allowed and logged
 2. **Subsequent Clicks**: Only allowed if they occur after the specified delay period for that specific button
+3. **Independent Timers**: Left and right mouse buttons have separate timers - switching between buttons doesn't reset the protection
 
-## Usage
+_Future Enhancement_: A total blocked clicks counter will be added to track overall protection effectiveness.
+
+## Quick Start
 
 1. **Set Delay**: Enter your desired delay in milliseconds (1-5000ms)
 2. **Start Protection**: Click "Start Protection" to begin monitoring clicks
@@ -35,60 +38,14 @@ _Tip: Start with the default 50ms delay - it works well for most users._
 
 ## Installation
 
-### Option 1: Download Release
+### Download Release
 
 _Coming soon - pre-built executables will be available from the releases page_
 
-### Option 2: Build from Source
+### Build from Source
 
-**Prerequisites:**
+For detailed build instructions, see [**Development Guide**](docs/DEVELOPMENT.md)
 
-- Windows operating system
-- Go 1.24.1 or later
-
-**Steps:**
-
-```bash
-# Clone the repository then
-cd click-guardian
-go mod tidy
-
-# Build using the build script (Windows)
-scripts\build.bat
-
-# Or build manually
-go build -o dist\click-guardian.exe .\cmd\click-guardian
-```
-
-### Running the Application
-
-After building, run the executable:
-
-```bash
-dist\click-guardian.exe
-```
-
-**For Development:**
-
-```bash
-scripts\dev.bat
-```
-
-## Project Structure
-
-```
-click-guardian/
-├── cmd/click-guardian/          # Main application entry point
-├── internal/                     # Private application packages
-│   ├── config/                   # Configuration management
-│   ├── gui/                      # GUI application logic
-│   ├── hooks/                    # Platform-specific mouse hooks
-│   └── logger/                   # Logging functionality
-├── scripts/                      # Build and development scripts
-├── dist/                         # Build outputs (executables)
-├── docs/                         # Documentation
-└── assets/                       # Static assets
-```
 
 ## Configuration
 
@@ -97,36 +54,21 @@ click-guardian/
 - **Gaming**: 10-30ms for fast-paced games
 - **Accessibility**: 100-500ms for users with motor difficulties
 
-## Technical Details
+## Documentation
 
-- **Platform**: Currently Windows only (uses Windows API)
-- **Framework**: Fyne v2 for GUI
-- **Hook Type**: Low-level mouse hook (WH_MOUSE_LL)
-- **Permissions**: May require administrator privileges on some systems
-- **Architecture**: Modular design prepared for cross-platform expansion
+- 📖 [**Development Guide**](docs/DEVELOPMENT.md) - Building, project structure, and development setup
+- ⚙️ [**VSCode Setup**](docs/VSCODE_SETUP.md) - IDE configuration and troubleshooting
+- 🔧 [**Build Instructions**](docs/BUILD.md) - Detailed build documentation
 
-### Cross-Platform Roadmap
-
-The project is structured to support multiple platforms in the future:
+## Cross-Platform Support
 
 - **Windows**: ✅ Fully supported (current)
 - **Linux**: 🚧 Planned (X11/Wayland support)
 - **macOS**: 🚧 Planned
 
-### VSCode Build Constraint Errors
-
-If you see errors like "build constraints exclude all Go files" in VSCode, this is a known issue with the Go language server and cross-platform dependencies. The errors are cosmetic - builds work fine.
-
-**Quick fix:**
-
-1. Open the workspace file: `click-guardian.code-workspace`
-2. Or reload VSCode: `Ctrl+Shift+P` → "Developer: Reload Window"
-
-See `docs/VSCODE_SETUP.md` for detailed solutions.
-
 ## Contributing
 
-Feel free to submit issues and pull requests to improve this application.
+Feel free to submit issues and pull requests to improve this application. See the [Development Guide](docs/DEVELOPMENT.md) for getting started.
 
 ## License
 
