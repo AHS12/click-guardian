@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+    <!-- Background circle for better contrast -->
+    <circle cx="128" cy="128" r="120" fill="#F8F9FA" opacity="0.8" />
+
+    <!-- Main shield body with solid green -->
+    <path
+        d="M128 25 
+             L65 62 
+             Q62 65 62 70 
+             L62 140 
+             Q62 160 70 175 
+             Q85 200 128 230 
+             Q171 200 186 175 
+             Q194 160 194 140 
+             L194 70 
+             Q194 65 191 62 
+             L128 25 Z"
+        fill="#4CAF50"
+        stroke="#2E7D32"
+        stroke-width="3" />
+
+    <!-- Shield beveled edge with lighter green -->
+    <path
+        d="M128 28 
+             L68 63 
+             Q65 66 65 71 
+             L65 139 
+             Q65 158 72 172 
+             Q86 196 128 225 
+             Q170 196 184 172 
+             Q191 158 191 139 
+             L191 71 
+             Q191 66 188 63 
+             L128 28 Z"
+        fill="none"
+        stroke="#66BB6A"
+        stroke-width="2"
+        opacity="0.7" />
+
+    <!-- Inner decorative shield -->
+    <path
+        d="M128 45 
+             L85 75 
+             Q82 78 82 82 
+             L82 135 
+             Q82 148 87 158 
+             Q98 175 128 195 
+             Q158 175 169 158 
+             Q174 148 174 135 
+             L174 82 
+             Q174 78 171 75 
+             L128 45 Z"
+        fill="#66BB6A"
+        opacity="0.5" />
+
+    <!-- Highlight overlay for 3D effect -->
+    <path
+        d="M128 25 
+             L65 62 
+             Q62 65 62 70 
+             L62 140 
+             Q62 160 70 175 
+             Q85 200 128 230 
+             Q171 200 186 175 
+             Q194 160 194 140 
+             L194 70 
+             Q194 65 191 62 
+             L128 25 Z"
+        fill="#FFFFFF"
+        opacity="0.2" />
+
+    <!-- Decorative elements inside shield -->
+    <g opacity="0.6">
+        <!-- Top ornament -->
+        <circle cx="128" cy="70" r="8" fill="#FFFFFF" opacity="0.8" />
+        <circle cx="128" cy="70" r="5" fill="#4CAF50" />
+
+        <!-- Side ornaments -->
+        <circle cx="100" cy="95" r="3" fill="#FFFFFF" opacity="0.7" />
+        <circle cx="156" cy="95" r="3" fill="#FFFFFF" opacity="0.7" />
+
+        <!-- Bottom ornament -->
+        <ellipse cx="128" cy="180" rx="15" ry="8" fill="#FFFFFF" opacity="0.4" />
+    </g>
+
+    <!-- Clean Windows-style cursor -->
+    <g transform="translate(112, 100)">
+        <!-- Simple cursor shadow -->
+        <path d="M2 2 L2 30 L8 24 L12 34 L16 32 L12 22 L22 22 Z"
+            fill="#000000"
+            opacity="0.3"
+            transform="translate(1, 1)" />
+
+        <!-- Main cursor body - clean and crisp -->
+        <path d="M1 1 L1 29 L7 23 L11 33 L15 31 L11 21 L21 21 Z"
+            fill="#FFFFFF"
+            stroke="#000000"
+            stroke-width="1"
+            stroke-linejoin="round" />
+    </g>
+
+    <!-- Simple click effect without animation -->
+    <g transform="translate(120, 108)">
+        <!-- Outer ring -->
+        <circle cx="0" cy="0" r="12"
+            fill="none"
+            stroke="#FF5722"
+            stroke-width="2"
+            opacity="0.5" />
+
+        <!-- Middle ring -->
+        <circle cx="0" cy="0" r="6"
+            fill="#FF5722"
+            opacity="0.6" />
+
+        <!-- Central dot -->
+        <circle cx="0" cy="0" r="2" fill="#FF5722" opacity="0.9" />
+    </g>
+
+    <!-- Additional protective elements -->
+    <g opacity="0.4">
+        <!-- Corner reinforcements -->
+        <path d="M75 80 Q70 75 75 70 Q80 75 75 80" fill="#FFFFFF" />
+        <path d="M181 80 Q186 75 181 70 Q176 75 181 80" fill="#FFFFFF" />
+
+        <!-- Bottom reinforcement -->
+        <ellipse cx="128" cy="200" rx="20" ry="5" fill="#FFFFFF" opacity="0.6" />
+    </g>
+
+    <!-- Final highlight for premium look -->
+    <path d="M128 25 
+             L65 62 
+             Q62 65 62 70 
+             L62 90"
+        fill="none"
+        stroke="#FFFFFF"
+        stroke-width="2"
+        opacity="0.6"
+        stroke-linecap="round" />
+</svg>

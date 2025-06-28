@@ -1,11 +1,11 @@
-# Click Guardian 🛡️
-
 <p align="center">
   <img src="assets/icon-modern-shield.svg" alt="Click Guardian Logo" width="128" height="128">
 </p>
 
+<h1 align="center">Click Guardian</h1>
+
 <p align="center">
-  <strong>A Windows application that prevents accidental double-clicks by introducing a customizable delay between mouse clicks.</strong>
+  <strong>An application that prevents accidental double-clicks by introducing a customizable delay between mouse clicks - currently available on Windows.</strong>
 </p>
 
 ## Features
@@ -22,27 +22,34 @@
 The application installs a low-level mouse hook that monitors left and right mouse button clicks. When a click is detected:
 
 1. **First Click**: Always allowed and logged
-2. **Subsequent Clicks**: Only allowed if they occur after the specified delay period
-3. **Different Buttons**: Switching between left/right buttons resets the timer
+2. **Subsequent Clicks**: Only allowed if they occur after the specified delay period for that specific button
 
 ## Usage
 
-1. **Set Delay**: Enter the desired delay in milliseconds (1-5000ms)
-2. **Start Protection**: Click "Start Protection" to begin monitoring
-3. **Monitor Activity**: Watch the log to see which clicks are blocked/allowed
-4. **Stop Protection**: Click "Stop Protection" when done
+1. **Set Delay**: Enter your desired delay in milliseconds (1-5000ms)
+2. **Start Protection**: Click "Start Protection" to begin monitoring clicks
+3. **Monitor Activity**: Watch the real-time log showing allowed/blocked clicks
+4. **Stop Protection**: Click "Stop Protection" when finished
+
+_Tip: Start with the default 50ms delay - it works well for most users._
 
 ## Installation
 
-### Prerequisites
+### Option 1: Download Release
+
+_Coming soon - pre-built executables will be available from the releases page_
+
+### Option 2: Build from Source
+
+**Prerequisites:**
 
 - Windows operating system
-- Go 1.24.1 or later (for building from source)
+- Go 1.24.1 or later
 
-### Building from Source
+**Steps:**
 
 ```bash
-git clone <repository-url>
+# Clone the repository then
 cd click-guardian
 go mod tidy
 
@@ -53,15 +60,15 @@ scripts\build.bat
 go build -o dist\click-guardian.exe .\cmd\click-guardian
 ```
 
-### Running
+### Running the Application
 
-Run the executable from the dist folder:
+After building, run the executable:
 
 ```bash
 dist\click-guardian.exe
 ```
 
-For development, you can use:
+**For Development:**
 
 ```bash
 scripts\dev.bat
@@ -105,20 +112,6 @@ The project is structured to support multiple platforms in the future:
 - **Windows**: ✅ Fully supported (current)
 - **Linux**: 🚧 Planned (X11/Wayland support)
 - **macOS**: 🚧 Planned
-- **Web**: 🚧 Possible via Fyne web compilation
-
-## Troubleshooting
-
-### "Failed to install mouse hook"
-
-- Try running as administrator
-- Check if antivirus is blocking the application
-- Ensure no other mouse hook applications are running
-
-### High CPU Usage
-
-- Reduce log verbosity by clearing logs frequently
-- Use reasonable delay values (avoid very small delays like 1ms)
 
 ### VSCode Build Constraint Errors
 
@@ -130,11 +123,6 @@ If you see errors like "build constraints exclude all Go files" in VSCode, this 
 2. Or reload VSCode: `Ctrl+Shift+P` → "Developer: Reload Window"
 
 See `docs/VSCODE_SETUP.md` for detailed solutions.
-
-### Application Not Responding
-
-- Stop protection and restart the application
-- Check Windows Event Viewer for system errors
 
 ## Contributing
 
