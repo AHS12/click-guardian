@@ -51,7 +51,7 @@ func NewApplication() *Application {
 	a.SetIcon(GetAppIcon()) // Use our modern shield icon
 
 	cfg := config.DefaultConfig()
-	w := a.NewWindow("Click Guardian v1.0")
+	w := a.NewWindow("Click Guardian")
 
 	// Create log display
 	logText := widget.NewRichTextFromMarkdown("")
@@ -111,17 +111,17 @@ func (app *Application) Run() {
 func (app *Application) setupUI() {
 	// Large app icon at the top
 	app.appIconWidget = widget.NewIcon(GetAppIcon())
-	app.appIconWidget.Resize(fyne.NewSize(80, 80))
+	// app.appIconWidget.Resize(fyne.NewSize(256, 256))
 
 	// App title - large and prominent
-	appTitle := widget.NewLabel("CLICK GUARDIAN")
-	appTitle.Alignment = fyne.TextAlignCenter
-	appTitle.Importance = widget.HighImportance
-	appTitle.TextStyle = fyne.TextStyle{Bold: true}
+	// appTitle := widget.NewLabel("CLICK GUARDIAN")
+	// appTitle.Alignment = fyne.TextAlignCenter
+	// appTitle.Importance = widget.HighImportance
+	// appTitle.TextStyle = fyne.TextStyle{Bold: true}
 
 	// Status indicator - larger circle for better visibility
 	app.statusIcon = canvas.NewCircle(color.RGBA{R: 220, G: 53, B: 69, A: 255}) // Red for stopped
-	app.statusIcon.Resize(fyne.NewSize(32, 32))
+	app.statusIcon.Resize(fyne.NewSize(200, 200))
 
 	// Large toggle button styled like a modern toggle switch
 	app.toggleButton = widget.NewButton("Start Protection", app.toggleProtection)
@@ -156,7 +156,7 @@ func (app *Application) setupUI() {
 	// Header with very large app icon centered
 	headerContainer := container.NewVBox(
 		container.NewCenter(app.appIconWidget),
-		container.NewCenter(appTitle),
+		// container.NewCenter(appTitle),
 	)
 
 	// Main control section with toggle button prominently placed
@@ -375,6 +375,5 @@ func (app *Application) handleUIUpdates() {
 		fyne.Do(func() {
 			app.counterLabel.SetText(fmt.Sprintf("Blocked Clicks: %d", count))
 		})
-		
 	}
 }
