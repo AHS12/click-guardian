@@ -18,8 +18,9 @@ Fixes # (issue)
 - [ ] Tested with both tenancy modes (if applicable)
 
 **Test Environment:**
-- PHP: 
-- Laravel: 
+- Windows: 
+- Mac OS:
+- Linux:  
 
 ## Checklist
 
