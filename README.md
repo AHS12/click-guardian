@@ -8,6 +8,10 @@
   <strong>An application that prevents accidental double-clicks by introducing a customizable delay between mouse clicks - currently available on Windows.</strong>
 </p>
 
+<p align="center">
+  <img src="image1.png" alt="Click Guardian Screenshot" width="320">
+</p>
+
 ## Features
 
 - 🎯 **Strict Double-Click Blocking**: Ensures no double-clicks are allowed under any circumstances
