@@ -13,7 +13,6 @@ scripts\release-build.bat
 This will create:
 
 - `dist\click-guardian-gui.exe` - Main application
-- `dist\click-guardian.exe` - Console version (for debugging)
 - `dist\click-guardian-v1.0.0-windows.zip` - Complete release package
 
 ## 📋 Prerequisites
@@ -66,8 +65,7 @@ The simplified build process:
 
 ### What Gets Built
 
-- **GUI Version** (`click-guardian-gui.exe`) - No console window, for end users
-- **Console Version** (`click-guardian.exe`) - Shows debug output, for development
+- **GUI Version** (`click-guardian-gui.exe`) - Main application for end users
 - **Release Package** (`click-guardian-v1.0.0-windows.zip`) - Complete distribution package
 
 ## 🔧 Manual Build Commands
@@ -121,7 +119,6 @@ The ZIP package includes:
 ```
 click-guardian-v1.0.0-windows/
 ├── click-guardian-gui.exe      # Main application
-├── click-guardian.exe          # Console version
 ├── README.txt                  # Usage instructions
 └── LICENSE                     # License (if present)
 ```
@@ -155,19 +152,15 @@ click-guardian-v1.0.0-windows/
 ### Check Version Information
 
 ```cmd
-# Test console version
-dist\click-guardian.exe --version
-
-# GUI version has same info but doesn't show console
-dist\click-guardian.exe --help
+# The GUI version doesn't show console output, but you can verify it was built correctly
+# by checking the file exists and running it to see the About dialog
 ```
 
 ### Verify Functionality
 
-1. **GUI Version** - Should start without console window
-2. **Console Version** - Should show debug output
-3. **Version Command** - Should display build info
-4. **Protection** - Test double-click blocking works
+1. **GUI Version** - Should start without console window and show the main interface
+2. **About Dialog** - Check "About" button to verify version info is embedded
+3. **Protection** - Test double-click blocking works
 
 ## 🐛 Simple Troubleshooting
 
@@ -190,8 +183,8 @@ scripts\release-build.bat
 
 ### Large File Size
 
-- Executables are ~24MB each (normal for Go with CGO and GUI)
-- Use the original `scripts\build.bat` for smaller builds without version info
+- Executable is ~24MB (normal for Go with CGO and GUI)
+- Use the original `scripts\build.bat` for smaller builds without version info if needed
 
 ## 📂 Files You Might Need to Edit
 

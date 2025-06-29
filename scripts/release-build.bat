@@ -47,35 +47,23 @@ del /Q dist\*.zip 2>nul
 REM Set version flags (keep it simple)
 set "VERSION_FLAGS=-X click-guardian/internal/version.Version=%VERSION% -X click-guardian/internal/version.GitCommit=%GIT_COMMIT% -X click-guardian/internal/version.BuildBy=%BUILD_BY%"
 
-REM Build GUI version (no console window) - same as your working build.bat but with version info
-echo Building GUI version...
-go build -ldflags "-s -w -H=windowsgui %VERSION_FLAGS%" -o dist\click-guardian-gui.exe .\cmd\click-guardian
+REM Build GUI version (no console window) - now just click-guardian.exe
+
+echo Building release version...
+go build -ldflags "-s -w -H=windowsgui %VERSION_FLAGS%" -o dist\click-guardian.exe .\cmd\click-guardian
 
 if %ERRORLEVEL% EQU 0 (
-    echo ✅ GUI build successful! Created dist\click-guardian-gui.exe
+    echo ✅ Build successful! Created dist\click-guardian.exe
 ) else (
-    echo ❌ GUI build failed!
-    goto console_build
-)
-
-REM Build console version (with console window for debugging) - same as your working build.bat but with version info
-:console_build
-echo Building console version...
-go build -ldflags "-s -w %VERSION_FLAGS%" -o dist\click-guardian.exe .\cmd\click-guardian
-
-if %ERRORLEVEL% EQU 0 (
-    echo ✅ Console build successful! Created dist\click-guardian.exe
-) else (
-    echo ❌ Console build failed!
+    echo ❌ Build failed!
     goto end
 )
 
-REM Test the builds
+REM Test the build
 echo.
-echo Testing builds...
+echo Testing build...
 if exist "dist\click-guardian.exe" (
-    echo Console version:
-    dist\click-guardian.exe --version
+    echo Release version build completed successfully
     echo.
 )
 
@@ -87,7 +75,6 @@ if not exist "build\temp" mkdir "build\temp"
 mkdir "%RELEASE_DIR%"
 
 REM Copy files to release directory
-copy "dist\click-guardian-gui.exe" "%RELEASE_DIR%\" >nul
 copy "dist\click-guardian.exe" "%RELEASE_DIR%\" >nul
 
 REM Create README for release
@@ -105,11 +92,10 @@ echo - Commit: %GIT_COMMIT%
 echo - Built by: %BUILD_BY%
 echo.
 echo Files:
-echo - click-guardian-gui.exe  - Main application ^(recommended^)
-echo - click-guardian.exe      - Console version ^(for debugging^)
+echo - click-guardian.exe  - Main application
 echo.
 echo Installation:
-echo 1. Run click-guardian-gui.exe
+echo 1. Run click-guardian.exe
 echo 2. Configure your preferred delay
 echo 3. Click "Start Protection"
 echo.

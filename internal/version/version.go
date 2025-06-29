@@ -3,13 +3,14 @@ package version
 import (
 	"fmt"
 	"runtime"
+	"time"
 )
 
 // Build information - set via ldflags during build
 var (
-	Version   = "dev"     // Version number
-	GitCommit = "unknown" // Git commit hash
-	BuildTime = "unknown" // Build timestamp
+	Version   = "dev"          // Version number
+	GitCommit = "unknown"      // Git commit hash
+	BuildTime = "unknown"      // Build timestamp
 	BuildBy   = "Azizul Hakim" // Who built it
 )
 
@@ -40,7 +41,7 @@ func GetAppInfo() AppInfo {
 		Platform:    runtime.GOOS,
 		Arch:        runtime.GOARCH,
 		Description: "Prevents accidental double-clicks with configurable delay protection",
-		Copyright:   "© 2025 Click Guardian Project",
+		Copyright:   fmt.Sprintf("© %d Azizul Hakim", time.Now().Year()),
 		Company:     "Click Guardian Project",
 	}
 }
