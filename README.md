@@ -12,7 +12,8 @@
 
 - 🎯 **Strict Double-Click Blocking**: Ensures no double-clicks are allowed under any circumstances
 - ⚙️ **Customizable Delay**: Set delay from 5ms to 500ms (default: 50ms)
-- 📊 **Real-time Logging**: Detailed logs for allowed and blocked clicks, including reasons and timestamps
+- � **Adaptive Protection**: Automatically increases delay when faulty mouse hardware is detected (never decreases below user setting)
+- �📊 **Real-time Logging**: Detailed logs for allowed and blocked clicks, including reasons and timestamps
 - 🖥️ **Modern GUI**: Clean and intuitive Fyne-based interface
 - 🚀 **Lightweight**: Minimal resource usage
 - 🛡️ **Safe**: Only monitors clicks, doesn't interfere with other mouse operations
@@ -24,8 +25,9 @@ The application installs a low-level mouse hook that monitors left and right mou
 1. **First Click**: Always allowed and logged
 2. **Subsequent Clicks**: Strictly blocked if they occur within the specified delay period for that specific button
 3. **Independent Timers**: Left and right mouse buttons have separate timers - switching between buttons doesn't reset the protection
+4. **Adaptive Protection**: Automatically detects faulty mouse hardware patterns (like low-pressure clicks) and increases the protection delay accordingly - never reduces below your selected setting
 
-_Future Enhancement_: Adaptive delay logic dynamically adjusts based on click patterns to improve usability and strictness.
+The adaptive system ensures maximum protection against problematic mice while maintaining your chosen baseline delay for normal operation.
 
 ## Quick Start
 

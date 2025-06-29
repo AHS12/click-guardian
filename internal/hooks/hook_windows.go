@@ -290,11 +290,13 @@ func (w *windowsHook) detectFaultyHardware(button C.WPARAM, holdDuration time.Du
 			}
 		}
 
-		// If more than 60% of recent clicks are short, reduce protection aggressively
+		// Adaptive delay should never be less than user-selected delay
+		// Only increase delay for detected faulty patterns, never decrease
 		if float64(shortClicks)/5.0 > 0.6 {
-			newDelay := w.delay / 2 // Reduce to half of original delay
-			if newDelay < 20*time.Millisecond {
-				newDelay = 20 * time.Millisecond // Minimum 20ms
+			// Increase delay for faulty hardware (never reduce below user setting)
+			newDelay := w.delay + (w.delay / 4) // Add 25% to user delay
+			if newDelay > 200*time.Millisecond {
+				newDelay = 200 * time.Millisecond // Maximum 200ms
 			}
 
 			buttonName := "Left"
@@ -304,18 +306,18 @@ func (w *windowsHook) detectFaultyHardware(button C.WPARAM, holdDuration time.Du
 
 			if w.adaptiveDelay[button] != newDelay {
 				w.adaptiveDelay[button] = newDelay
-				w.sendLog(fmt.Sprintf("🔧 ADAPTIVE STRICT: %s button delay reduced to %.0fms due to detected low-pressure pattern",
+				w.sendLog(fmt.Sprintf("🔧 ADAPTIVE STRICT: %s button delay increased to %.0fms due to detected low-pressure pattern",
 					buttonName, float64(newDelay.Nanoseconds())/1000000))
 			}
 		} else {
-			// Reset to normal delay if pattern improves
+			// Reset to user-selected delay if pattern improves
 			if w.adaptiveDelay[button] != w.delay {
 				w.adaptiveDelay[button] = w.delay
 				buttonName := "Left"
 				if button == C.WM_RBUTTONDOWN {
 					buttonName = "Right"
 				}
-				w.sendLog(fmt.Sprintf("🔧 ADAPTIVE STRICT: %s button delay reset to normal (%.0fms)",
+				w.sendLog(fmt.Sprintf("🔧 ADAPTIVE STRICT: %s button delay reset to user setting (%.0fms)",
 					buttonName, float64(w.delay.Nanoseconds())/1000000))
 			}
 		}
@@ -323,8 +325,9 @@ func (w *windowsHook) detectFaultyHardware(button C.WPARAM, holdDuration time.Du
 }
 
 // getEffectiveDelay returns the adaptive delay for a specific button
+// Never returns a delay less than the user-selected delay
 func (w *windowsHook) getEffectiveDelay(button C.WPARAM) time.Duration {
-	if adaptiveDelay, exists := w.adaptiveDelay[button]; exists && adaptiveDelay > 0 {
+	if adaptiveDelay, exists := w.adaptiveDelay[button]; exists && adaptiveDelay >= w.delay {
 		return adaptiveDelay
 	}
 	return w.delay
