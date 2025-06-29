@@ -1,0 +1,147 @@
+@echo off
+setlocal EnableDelayedExpansion
+
+echo =====================================
+echo  Click Guardian - Release Builder
+echo =====================================
+echo.
+
+REM Navigate to project root
+cd /d "%~dp0\.."
+echo Building from: %CD%
+echo.
+
+REM Load version from config or use default
+set VERSION=1.0.0
+if exist "build\build.conf" (
+    for /f "usebackq tokens=1,2 delims==" %%A in ("build\build.conf") do (
+        if "%%A"=="VERSION" set VERSION=%%B
+    )
+)
+
+REM Get build info
+for /f %%A in ('git rev-parse --short HEAD 2^>nul') do set GIT_COMMIT=%%A
+if not defined GIT_COMMIT set GIT_COMMIT=unknown
+
+for /f %%A in ('git config user.name 2^>nul') do set BUILD_BY=%%A
+if not defined BUILD_BY set BUILD_BY=%USERNAME%
+
+REM Get current date/time for build timestamp
+for /f "tokens=2-4 delims=/ " %%A in ('date /t') do set BUILD_DATE=%%C-%%A-%%B
+for /f "tokens=1-2 delims=: " %%A in ('time /t') do set BUILD_TIME=%%A:%%B
+set BUILD_TIMESTAMP=!BUILD_DATE! !BUILD_TIME!
+
+echo Building Click Guardian v%VERSION%
+echo Git Commit: %GIT_COMMIT%
+echo Build Time: %BUILD_TIMESTAMP%
+echo Built By: %BUILD_BY%
+echo.
+
+REM Create dist directory if it doesn't exist
+if not exist "dist" mkdir dist
+
+REM Clean previous builds
+del /Q dist\*.exe 2>nul
+del /Q dist\*.zip 2>nul
+
+REM Set version flags (keep it simple)
+set "VERSION_FLAGS=-X click-guardian/internal/version.Version=%VERSION% -X click-guardian/internal/version.GitCommit=%GIT_COMMIT% -X click-guardian/internal/version.BuildBy=%BUILD_BY%"
+
+REM Build GUI version (no console window) - same as your working build.bat but with version info
+echo Building GUI version...
+go build -ldflags "-s -w -H=windowsgui %VERSION_FLAGS%" -o dist\click-guardian-gui.exe .\cmd\click-guardian
+
+if %ERRORLEVEL% EQU 0 (
+    echo ✅ GUI build successful! Created dist\click-guardian-gui.exe
+) else (
+    echo ❌ GUI build failed!
+    goto console_build
+)
+
+REM Build console version (with console window for debugging) - same as your working build.bat but with version info
+:console_build
+echo Building console version...
+go build -ldflags "-s -w %VERSION_FLAGS%" -o dist\click-guardian.exe .\cmd\click-guardian
+
+if %ERRORLEVEL% EQU 0 (
+    echo ✅ Console build successful! Created dist\click-guardian.exe
+) else (
+    echo ❌ Console build failed!
+    goto end
+)
+
+REM Test the builds
+echo.
+echo Testing builds...
+if exist "dist\click-guardian.exe" (
+    echo Console version:
+    dist\click-guardian.exe --version
+    echo.
+)
+
+REM Create release package
+echo Creating release package...
+set RELEASE_DIR=build\temp\click-guardian-v%VERSION%-windows
+if exist "%RELEASE_DIR%" rmdir /s /q "%RELEASE_DIR%"
+if not exist "build\temp" mkdir "build\temp"
+mkdir "%RELEASE_DIR%"
+
+REM Copy files to release directory
+copy "dist\click-guardian-gui.exe" "%RELEASE_DIR%\" >nul
+copy "dist\click-guardian.exe" "%RELEASE_DIR%\" >nul
+
+REM Create README for release
+(
+echo Click Guardian v%VERSION%
+echo.
+echo Prevents accidental double-clicks with configurable delay protection
+echo.
+echo © 2025 Click Guardian Project
+echo.
+echo Build Information:
+echo - Version: %VERSION%
+echo - Built: %BUILD_TIMESTAMP%
+echo - Commit: %GIT_COMMIT%
+echo - Built by: %BUILD_BY%
+echo.
+echo Files:
+echo - click-guardian-gui.exe  - Main application ^(recommended^)
+echo - click-guardian.exe      - Console version ^(for debugging^)
+echo.
+echo Installation:
+echo 1. Run click-guardian-gui.exe
+echo 2. Configure your preferred delay
+echo 3. Click "Start Protection"
+echo.
+echo For auto-start with Windows:
+echo - Check "Start with Windows and auto-enable protection"
+) > "%RELEASE_DIR%\README.txt"
+
+REM Copy license if it exists
+if exist "LICENSE" copy "LICENSE" "%RELEASE_DIR%\" >nul
+if exist "LICENSE.txt" copy "LICENSE.txt" "%RELEASE_DIR%\" >nul
+if exist "LICENSE.md" copy "LICENSE.md" "%RELEASE_DIR%\" >nul
+
+REM Create ZIP using PowerShell
+echo Creating ZIP package...
+powershell -Command "Compress-Archive -Path '%RELEASE_DIR%\*' -DestinationPath 'dist\click-guardian-v%VERSION%-windows.zip' -Force"
+
+if exist "dist\click-guardian-v%VERSION%-windows.zip" (
+    echo ✅ Release package created: dist\click-guardian-v%VERSION%-windows.zip
+) else (
+    echo ❌ Failed to create release package
+)
+
+:end
+echo.
+echo =====================================
+echo   🎉 RELEASE BUILD COMPLETE!
+echo =====================================
+echo.
+echo Files created:
+dir dist\*.exe dist\*.zip 2>nul
+echo.
+echo Version: %VERSION%
+echo Ready for distribution! 🚀
+echo.
+pause

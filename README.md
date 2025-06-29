@@ -48,9 +48,27 @@ _Tip: Start with the default 50ms delay - it works well for most users._
 
 ### Download Release
 
-_Coming soon - pre-built executables will be available from the releases page_
+**Official releases with proper versioning, code signing, and Windows integration:**
+
+1. Go to [Releases](../../releases) page
+2. Download the latest `click-guardian-v*.zip`
+3. Extract and run `click-guardian-gui.exe`
+
+**Alternative downloads:**
+
+- `click-guardian-gui.exe` - Main application (recommended)
+- `click-guardian.exe` - Console version (shows debug output)
 
 ### Build from Source
+
+For development or custom builds, see [**Release Build Guide**](docs/RELEASE_BUILD.md) for professional builds with:
+
+- Proper versioning and metadata
+- Windows resources and icons
+- Optional code signing
+- Release packaging
+
+**Quick development build:**
 
 For detailed build instructions, see [**Development Guide**](docs/DEVELOPMENT.md)
 

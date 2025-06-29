@@ -18,6 +18,7 @@ import (
 	"click-guardian/internal/config"
 	"click-guardian/internal/hooks"
 	"click-guardian/internal/logger"
+	"click-guardian/internal/version"
 	"click-guardian/pkg/platform"
 )
 
@@ -66,7 +67,10 @@ func NewApplication() *Application {
 	a.SetIcon(GetAppIcon()) // Use our modern shield icon
 
 	cfg := config.LoadConfig() // Load saved config instead of default
-	w := a.NewWindow("Click Guardian")
+
+	// Set window title with version
+	windowTitle := fmt.Sprintf("Click Guardian v%s", version.GetVersionString())
+	w := a.NewWindow(windowTitle)
 
 	// Create log display
 	logText := widget.NewRichTextFromMarkdown("")

@@ -1,0 +1,234 @@
+# Release Build Guide
+
+This guide explains how to create professional release builds of Click Guardian with proper versioning and packaging.
+
+## 🚀 Quick Start
+
+For a simple release build:
+
+```cmd
+scripts\release-build.bat
+```
+
+This will create:
+
+- `dist\click-guardian-gui.exe` - Main application
+- `dist\click-guardian.exe` - Console version (for debugging)
+- `dist\click-guardian-v1.0.0-windows.zip` - Complete release package
+
+## 📋 Prerequisites
+
+### Required
+
+- **Go 1.24.1+** with CGO enabled
+- **Git** (for version information)
+
+### Optional
+
+- **Windows SDK** (for code signing with `signtool`)
+- **Code signing certificate** (for production releases)
+
+## 📝 Version Management
+
+### Change Version Number
+
+Edit **ONE** file to change the version:
+
+**File: `build\build.conf`**
+
+```ini
+VERSION=1.0.0
+```
+
+That's it! The build script automatically uses this version for:
+
+- Executable metadata
+- Package naming
+- Release documentation
+
+### Version Auto-Detection
+
+The build script automatically includes:
+
+- **Git commit hash** - from `git rev-parse --short HEAD`
+- **Build timestamp** - current date/time
+- **Builder name** - from `git config user.name` or Windows username
+
+## 🏗️ Build Process
+
+The simplified build process:
+
+1. **Load version** from `build\build.conf`
+2. **Get git info** (commit, builder name)
+3. **Build executables** with embedded version info
+4. **Create release package** with documentation
+5. **Generate ZIP file** ready for distribution
+
+### What Gets Built
+
+- **GUI Version** (`click-guardian-gui.exe`) - No console window, for end users
+- **Console Version** (`click-guardian.exe`) - Shows debug output, for development
+- **Release Package** (`click-guardian-v1.0.0-windows.zip`) - Complete distribution package
+
+## 🔧 Manual Build Commands
+
+If you prefer to build manually:
+
+### Basic Build (Same as your original build.bat)
+
+```cmd
+# GUI version (recommended for users)
+go build -ldflags "-s -w -H=windowsgui" -o dist\click-guardian-gui.exe .\cmd\click-guardian
+
+# Console version (for debugging)
+go build -ldflags "-s -w" -o dist\click-guardian.exe .\cmd\click-guardian
+```
+
+### Build with Version Information
+
+```cmd
+# Set your version
+set VERSION=1.0.0
+set GIT_COMMIT=abc1234
+set BUILD_BY=YourName
+
+# Build with version info
+go build -ldflags "-s -w -H=windowsgui -X click-guardian/internal/version.Version=%VERSION% -X click-guardian/internal/version.GitCommit=%GIT_COMMIT% -X click-guardian/internal/version.BuildBy=%BUILD_BY%" -o dist\click-guardian-gui.exe .\cmd\click-guardian
+```
+
+## 🔐 Code Signing (Optional)
+
+### For Production Releases
+
+1. **Get a certificate** from a trusted CA (DigiCert, Sectigo, etc.)
+2. **Use the signing script**:
+   ```cmd
+   build\scripts\sign-code.bat dist\click-guardian-gui.exe path\to\cert.pfx password
+   ```
+
+### Self-Signed Certificate (Testing Only)
+
+```cmd
+# Create self-signed certificate (Windows will show warnings)
+makecert -sv mykey.pvk -n "CN=YourName" mycert.cer
+pvk2pfx -pvk mykey.pvk -spc mycert.cer -pfx mycert.pfx
+```
+
+## 📦 Release Package Contents
+
+The ZIP package includes:
+
+```
+click-guardian-v1.0.0-windows/
+├── click-guardian-gui.exe      # Main application
+├── click-guardian.exe          # Console version
+├── README.txt                  # Usage instructions
+└── LICENSE                     # License (if present)
+```
+
+## 🚀 Distribution
+
+### GitHub Releases (Recommended)
+
+1. **Update version** in `build\build.conf`
+2. **Build release**:
+   ```cmd
+   scripts\release-build.bat
+   ```
+3. **Create git tag**:
+   ```cmd
+   git tag -a v1.0.0 -m "Release version 1.0.0"
+   git push origin v1.0.0
+   ```
+4. **Upload to GitHub**:
+   - Go to GitHub → Releases → Create new release
+   - Upload `click-guardian-v1.0.0-windows.zip`
+
+### Direct Distribution
+
+- Share the ZIP file directly
+- Upload to your website
+- Distribute the signed executables
+
+## 🔍 Testing Your Build
+
+### Check Version Information
+
+```cmd
+# Test console version
+dist\click-guardian.exe --version
+
+# GUI version has same info but doesn't show console
+dist\click-guardian.exe --help
+```
+
+### Verify Functionality
+
+1. **GUI Version** - Should start without console window
+2. **Console Version** - Should show debug output
+3. **Version Command** - Should display build info
+4. **Protection** - Test double-click blocking works
+
+## 🐛 Simple Troubleshooting
+
+### Build Fails
+
+```cmd
+# Check Go environment
+go version
+go env
+
+# Clean and retry
+rmdir /s /q dist
+scripts\release-build.bat
+```
+
+### No Version Info
+
+- Make sure `build\build.conf` exists with `VERSION=1.0.0`
+- Check that Git is installed and working
+
+### Large File Size
+
+- Executables are ~24MB each (normal for Go with CGO and GUI)
+- Use the original `scripts\build.bat` for smaller builds without version info
+
+## 📂 Files You Might Need to Edit
+
+### For Version Changes
+
+- **`build\build.conf`** - Change `VERSION=1.0.0` to your new version
+
+### For Build Customization
+
+- **`scripts\release-build.bat`** - Modify build process
+- **`scripts\build.bat`** - Your original working build script
+
+### For App Changes
+
+- **`cmd\click-guardian\main.go`** - Main application entry point
+- **`internal\version\version.go`** - Version handling code
+
+---
+
+## 🎯 Quick Reference
+
+**To release a new version:**
+
+1. Edit `build\build.conf` → change VERSION
+2. Run `scripts\release-build.bat`
+3. Upload `dist\click-guardian-v1.0.0-windows.zip`
+
+**Simple build (no packaging):**
+
+```cmd
+scripts\build.bat
+```
+
+**Release build (with packaging):**
+
+```cmd
+scripts\release-build.bat
+```
+
+That's it! 🎉
