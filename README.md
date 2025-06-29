@@ -36,6 +36,12 @@ The adaptive system ensures maximum protection against problematic mice while ma
 3. **Monitor Activity**: Watch the real-time log showing allowed/blocked clicks
 4. **Stop Protection**: Click "Stop Protection" when finished
 
+### Auto-Start Features
+
+- **Start with Windows**: Enable "Start with Windows and auto-enable protection" to automatically launch when Windows boots
+- **Seamless Protection**: When enabled, the app starts minimized to system tray and automatically begins protection with your configured delay
+- **Perfect for Always-On Protection**: One checkbox for complete hands-off protection that starts automatically with Windows
+
 _Tip: Start with the default 50ms delay - it works well for most users._
 
 ## Installation
@@ -54,6 +60,39 @@ For detailed build instructions, see [**Development Guide**](docs/DEVELOPMENT.md
 - **Recommended Range**: 30-100ms for most applications
 - **Gaming**: 10-30ms for fast-paced games
 - **Accessibility**: 100-500ms for users with motor difficulties
+
+## ⚠️ Important Anti-Cheat Warning
+
+**MULTIPLAYER GAMING COMPATIBILITY NOTICE**
+
+This application uses low-level mouse hooks that may be detected by anti-cheat systems as potentially malicious software. **Use with caution when playing multiplayer games**.
+
+### Anti-Cheat Systems That May Flag This Application:
+
+- **BattlEye** (PUBG, Rainbow Six Siege, Fortnite, etc.)
+- **EasyAntiCheat** (Apex Legends, Fall Guys, Rocket League, etc.)
+- **Vanguard** (Valorant) - _Extremely strict detection_
+- **VAC** (Steam games like CS2, Dota 2, etc.)
+- **FairFight/PunkBuster** (Battlefield series, etc.)
+
+### Recommendations for Gamers:
+
+1. **Stop Protection Before Gaming**: Always disable Click Guardian before launching multiplayer games
+2. **Exit Completely**: Use "Quit Application" from the system tray rather than just minimizing
+3. **Test in Single Player**: If unsure, test with single-player games first
+4. **Create Gaming Profile**: Consider using Windows Task Scheduler to automatically stop the service during gaming hours
+
+### Why This Happens:
+
+Anti-cheat systems flag applications that:
+
+- Install system-wide mouse hooks
+- Block or modify mouse input events
+- Monitor global system activity
+
+While Click Guardian is legitimate accessibility software, its technical methods are similar to those used by cheating software.
+
+**We are not responsible for any account bans or penalties resulting from anti-cheat detection. Use at your own risk with online games.**
 
 ## Documentation
 

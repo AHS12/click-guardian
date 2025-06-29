@@ -18,6 +18,7 @@ import (
 	"click-guardian/internal/config"
 	"click-guardian/internal/hooks"
 	"click-guardian/internal/logger"
+	"click-guardian/pkg/platform"
 )
 
 // Application represents the main GUI application
@@ -42,6 +43,7 @@ type Application struct {
 	logText             *widget.RichText
 	logContainer        *container.Scroll
 	minimizeToTrayCheck *widget.Check
+	autoStartCheck      *widget.Check
 	// appIconWidget       *widget.Icon
 	updateChan     chan int
 	updateChanOnce sync.Once
@@ -49,6 +51,13 @@ type Application struct {
 	// System tray
 	trayRestore *systray.MenuItem
 	trayQuit    *systray.MenuItem
+
+	// Cleanup control
+	shutdownChan chan struct{}
+	shutdownOnce sync.Once
+
+	// Store checkbox states to avoid UI thread issues during shutdown
+	minimizeToTrayEnabled bool
 }
 
 // NewApplication creates a new GUI application
@@ -68,14 +77,16 @@ func NewApplication() *Application {
 	logger := logger.NewLogger(logText, logContainer, cfg.MaxLogLines)
 
 	return &Application{
-		app:          a,
-		window:       w,
-		hook:         hooks.NewMouseHook(),
-		logger:       logger,
-		config:       cfg,
-		logText:      logText,
-		logContainer: logContainer,
-		updateChan:   make(chan int, 10),
+		app:                   a,
+		window:                w,
+		hook:                  hooks.NewMouseHook(),
+		logger:                logger,
+		config:                cfg,
+		logText:               logText,
+		logContainer:          logContainer,
+		updateChan:            make(chan int, 10),
+		shutdownChan:          make(chan struct{}),
+		minimizeToTrayEnabled: true, // Default to true
 	}
 }
 
@@ -99,14 +110,103 @@ func (app *Application) Run() {
 	// Start a goroutine to handle UI updates safely
 	go app.handleUIUpdates()
 
-	// Set window close behavior based on checkbox
-	app.window.SetCloseIntercept(func() {
-		if app.minimizeToTrayCheck.Checked {
-			app.minimizeToTray()
-		} else {
-			app.quitApplication()
-		}
-	})
+	// Set window close behavior based on stored state (avoid UI thread issues)
+	app.window.SetCloseIntercept(app.handleWindowClose)
+
+	app.window.ShowAndRun()
+
+	// Cleanup when application finally quits
+	app.cleanup()
+}
+
+// RunMinimized starts the application minimized to system tray
+func (app *Application) RunMinimized() {
+	app.setupUI()
+	app.setupSystemTray()
+	app.logger.Start()
+
+	// Initialize log
+	app.logger.Log("Click Guardian application started (minimized)")
+	if !app.hook.IsSupported() {
+		app.logger.Log("❌ Mouse hooking not supported on this platform")
+	} else {
+		app.logger.Log("Application started minimized to system tray")
+
+		// Auto-start protection when launched minimized (from Windows startup)
+		go func() {
+			// Small delay to ensure everything is initialized
+			time.Sleep(1 * time.Second)
+			app.startProtection()
+			app.logger.Log("🚀 Protection auto-started on Windows startup")
+		}()
+	}
+
+	// Start a goroutine to update the blocked clicks counter
+	go app.updateBlockedClicksCounter()
+
+	// Start a goroutine to handle UI updates safely
+	go app.handleUIUpdates()
+
+	// Set window close behavior based on stored state (avoid UI thread issues)
+	app.window.SetCloseIntercept(app.handleWindowClose)
+
+	// Start minimized to tray
+	app.isHidden = true
+
+	// Show window briefly then hide it (required for Fyne to initialize properly)
+	app.window.Resize(fyne.NewSize(float32(app.config.WindowWidth), float32(app.config.WindowHeight)))
+	app.window.SetFixedSize(true)
+	app.window.CenterOnScreen()
+
+	// Use a goroutine to hide the window after showing
+	go func() {
+		fyne.Do(func() {
+			app.window.Show()
+		})
+		// Small delay to ensure window is properly initialized
+		time.Sleep(100 * time.Millisecond)
+		fyne.Do(func() {
+			app.window.Hide()
+		})
+	}()
+
+	// Run the application
+	app.window.ShowAndRun()
+
+	// Cleanup when application finally quits
+	app.cleanup()
+}
+
+// RunWithAutoProtect starts the application and automatically enables protection
+func (app *Application) RunWithAutoProtect() {
+	app.setupUI()
+	app.setupSystemTray()
+	app.logger.Start()
+
+	// Initialize log
+	app.logger.Log("Click Guardian application started with auto-protect")
+	if !app.hook.IsSupported() {
+		app.logger.Log("❌ Mouse hooking not supported on this platform")
+	} else {
+		app.logger.Log("Enter a delay value or protection will start automatically")
+
+		// Auto-start protection
+		go func() {
+			// Small delay to ensure everything is initialized
+			time.Sleep(1 * time.Second)
+			app.startProtection()
+			app.logger.Log("🚀 Protection auto-started")
+		}()
+	}
+
+	// Start a goroutine to update the blocked clicks counter
+	go app.updateBlockedClicksCounter()
+
+	// Start a goroutine to handle UI updates safely
+	go app.handleUIUpdates()
+
+	// Set window close behavior based on stored state (avoid UI thread issues)
+	app.window.SetCloseIntercept(app.handleWindowClose)
 
 	app.window.ShowAndRun()
 
@@ -162,8 +262,19 @@ func (app *Application) setupUI() {
 	}
 
 	// Minimize to tray checkbox
-	app.minimizeToTrayCheck = widget.NewCheck("Minimize to system tray when closing", nil)
+	app.minimizeToTrayCheck = widget.NewCheck("Minimize to system tray when closing", func(checked bool) {
+		app.minimizeToTrayEnabled = checked
+	})
 	app.minimizeToTrayCheck.SetChecked(true)
+
+	// Auto-start checkbox
+	app.autoStartCheck = widget.NewCheck("Start with Windows and auto-enable protection", app.onAutoStartChanged)
+	app.autoStartCheck.SetChecked(false) // Default unchecked
+
+	// Remove the separate auto-protect checkbox - it's now integrated
+
+	// Check current auto-start status and update checkbox
+	app.updateAutoStartStatus()
 
 	// Clear log button
 	clearButton := widget.NewButton("Clear Log", func() {
@@ -204,6 +315,7 @@ func (app *Application) setupUI() {
 			container.NewCenter(app.delayValueLabel),
 		),
 		app.minimizeToTrayCheck,
+		app.autoStartCheck,
 	)
 
 	configSection := widget.NewCard("", "", container.NewVBox(
@@ -262,23 +374,28 @@ func (app *Application) startProtection() {
 	// Get delay value from slider
 	delayMs := int(app.delaySlider.Value)
 
-	// Disable slider when protection is active
-	app.delaySlider.Disable()
+	// Update UI elements on main thread
+	fyne.Do(func() {
+		// Disable slider when protection is active
+		app.delaySlider.Disable()
+
+		app.statusIcon.FillColor = color.RGBA{R: 40, G: 167, B: 69, A: 255} // Green for active
+		app.statusIcon.Refresh()
+		// app.statusLabel.SetText("Protection Active")
+		app.toggleButton.SetText("Stop Protection")
+		app.toggleButton.Importance = widget.DangerImportance
+	})
 
 	app.isRunning = true
-	app.statusIcon.FillColor = color.RGBA{R: 40, G: 167, B: 69, A: 255} // Green for active
-	app.statusIcon.Refresh()
-	// app.statusLabel.SetText("Protection Active")
-	app.toggleButton.SetText("Stop Protection")
-	app.toggleButton.Importance = widget.DangerImportance
-
 	app.logger.Log("Starting double-click protection with %d ms delay", delayMs)
 
 	err := app.hook.Start(time.Duration(delayMs)*time.Millisecond, app.logger.GetChannel())
 	if err != nil {
 		app.logger.Log("❌ Failed to start protection: %v", err)
-		app.statusIcon.FillColor = color.RGBA{R: 255, G: 193, B: 7, A: 255} // Yellow for failed
-		app.statusIcon.Refresh()
+		fyne.Do(func() {
+			app.statusIcon.FillColor = color.RGBA{R: 255, G: 193, B: 7, A: 255} // Yellow for failed
+			app.statusIcon.Refresh()
+		})
 		// app.statusLabel.SetText("Protection Failed")
 		app.resetUI()
 	} else {
@@ -300,28 +417,28 @@ func (app *Application) stopProtection() {
 
 func (app *Application) resetUI() {
 	app.isRunning = false
-	app.statusIcon.FillColor = color.RGBA{R: 220, G: 53, B: 69, A: 255} // Red for stopped
-	app.statusIcon.Refresh()
-	// app.statusLabel.SetText("Protection Stopped")
-	app.toggleButton.SetText("Start Protection")
-	app.toggleButton.Importance = widget.HighImportance
 
-	// Re-enable slider when protection is stopped
-	app.delaySlider.Enable()
+	fyne.Do(func() {
+		app.statusIcon.FillColor = color.RGBA{R: 220, G: 53, B: 69, A: 255} // Red for stopped
+		app.statusIcon.Refresh()
+		// app.statusLabel.SetText("Protection Stopped")
+		app.toggleButton.SetText("Start Protection")
+		app.toggleButton.Importance = widget.HighImportance
+
+		// Re-enable slider when protection is stopped
+		app.delaySlider.Enable()
+	})
 
 	// Update tray tooltip when protection stops
 	app.updateTrayTooltip()
 }
 
 func (app *Application) cleanup() {
-	if app.isRunning {
-		app.hook.Stop()
-	}
-	app.logger.Stop()
-	app.updateChanOnce.Do(func() {
-		close(app.updateChan)
+	app.shutdownOnce.Do(func() {
+		fmt.Println("Cleanup called from main thread")
+		// This is now mainly for the normal app termination path
+		// The quitApplication function handles immediate shutdown
 	})
-	systray.Quit()
 }
 
 // setupSystemTray initializes the system tray
@@ -346,12 +463,36 @@ func (app *Application) onTrayReady() {
 
 	// Handle tray menu clicks
 	go func() {
+		defer func() {
+			// Cleanup when this goroutine exits
+			if r := recover(); r != nil {
+				fmt.Printf("Tray menu handler recovered from panic: %v\n", r)
+			}
+		}()
+
 		for {
 			select {
 			case <-app.trayRestore.ClickedCh:
-				app.showFromTray()
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							fmt.Printf("Recovery during show from tray: %v\n", r)
+						}
+					}()
+					app.showFromTray()
+				}()
 			case <-app.trayQuit.ClickedCh:
-				app.quitApplication()
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							fmt.Printf("Recovery during quit from tray: %v\n", r)
+						}
+					}()
+					app.quitApplication()
+				}()
+				return
+			case <-app.shutdownChan:
+				// Graceful shutdown
 				return
 			}
 		}
@@ -360,28 +501,109 @@ func (app *Application) onTrayReady() {
 
 // onTrayExit is called when the system tray exits
 func (app *Application) onTrayExit() {
-	// Cleanup if needed
+	// Ensure cleanup is called when tray exits
+	app.cleanup()
 }
 
 // minimizeToTray hides the window and shows a notification
 func (app *Application) minimizeToTray() {
-	app.window.Hide()
+	fyne.Do(func() {
+		app.window.Hide()
+	})
 	app.isHidden = true
-	app.logger.Log("Application minimized to system tray")
+	// Don't log during potential shutdown to avoid deadlocks
+	if app.logger != nil {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// Ignore logger errors during shutdown
+				}
+			}()
+			app.logger.Log("Application minimized to system tray")
+		}()
+	}
 }
 
 // showFromTray shows the window from the system tray
 func (app *Application) showFromTray() {
-	app.window.Show()
+	fyne.Do(func() {
+		app.window.Show()
+	})
 	app.isHidden = false
-	app.logger.Log("Application restored from system tray")
+	// Don't log during potential shutdown to avoid deadlocks
+	if app.logger != nil {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// Ignore logger errors during shutdown
+				}
+			}()
+			app.logger.Log("Application restored from system tray")
+		}()
+	}
 }
 
 // quitApplication properly closes the application
 func (app *Application) quitApplication() {
-	app.cleanup()
-	systray.Quit()
-	app.app.Quit()
+	fmt.Println("User requested application quit")
+
+	// Stop everything immediately and directly
+	if app.isRunning {
+		fmt.Println("Stopping mouse hook protection...")
+		app.hook.Stop()
+		app.isRunning = false
+	}
+
+	// Signal all goroutines to stop
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Printf("Recovery during shutdown signal: %v\n", r)
+			}
+		}()
+		close(app.shutdownChan)
+	}()
+
+	// Stop logger
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Printf("Recovery during logger stop: %v\n", r)
+			}
+		}()
+		app.logger.Stop()
+	}()
+
+	// Close update channel
+	app.updateChanOnce.Do(func() {
+		close(app.updateChan)
+	})
+
+	// Quit system tray
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Printf("Recovery during systray quit: %v\n", r)
+			}
+		}()
+		systray.Quit()
+	}()
+
+	fmt.Println("Cleanup completed, quitting app...")
+
+	// Quit the Fyne app directly on the main thread
+	fyne.Do(func() {
+		app.app.Quit()
+	})
+}
+
+// handleWindowClose handles the window close event safely
+func (app *Application) handleWindowClose() {
+	if app.minimizeToTrayEnabled {
+		app.minimizeToTray()
+	} else {
+		app.quitApplication()
+	}
 }
 
 // updateBlockedClicksCounter continuously updates the blocked clicks display
@@ -389,15 +611,21 @@ func (app *Application) updateBlockedClicksCounter() {
 	ticker := time.NewTicker(500 * time.Millisecond) // Update every 500ms
 	defer ticker.Stop()
 
-	for range ticker.C {
-		if app.hook != nil {
-			count := app.hook.GetBlockedCount()
-			// Send the count to the UI update channel
-			select {
-			case app.updateChan <- count:
-			default:
-				// Don't block if channel is full
+	for {
+		select {
+		case <-ticker.C:
+			if app.hook != nil {
+				count := app.hook.GetBlockedCount()
+				// Send the count to the UI update channel
+				select {
+				case app.updateChan <- count:
+				default:
+					// Don't block if channel is full
+				}
 			}
+		case <-app.shutdownChan:
+			// Graceful shutdown
+			return
 		}
 	}
 }
@@ -448,4 +676,33 @@ func (app *Application) updateTrayTooltip() {
 			systray.SetTooltip("Click Guardian - Inactive")
 		}
 	})
+}
+
+// onAutoStartChanged handles the auto-start checkbox state change
+func (app *Application) onAutoStartChanged(checked bool) {
+	if checked {
+		err := platform.EnableAutoStart()
+		if err != nil {
+			app.logger.Log("❌ Failed to enable auto-start: %v", err)
+			// Revert checkbox state if failed
+			app.autoStartCheck.SetChecked(false)
+		} else {
+			app.logger.Log("✅ Auto-start with Windows enabled")
+		}
+	} else {
+		err := platform.DisableAutoStart()
+		if err != nil {
+			app.logger.Log("❌ Failed to disable auto-start: %v", err)
+			// Revert checkbox state if failed
+			app.autoStartCheck.SetChecked(true)
+		} else {
+			app.logger.Log("✅ Auto-start with Windows disabled")
+		}
+	}
+}
+
+// updateAutoStartStatus checks if auto-start is currently enabled and updates the checkbox
+func (app *Application) updateAutoStartStatus() {
+	isEnabled := platform.IsAutoStartEnabled()
+	app.autoStartCheck.SetChecked(isEnabled)
 }
