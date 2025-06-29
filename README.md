@@ -130,4 +130,4 @@ Feel free to submit issues and pull requests to improve this application. See th
 
 ## License
 
-This project is open source and available under the GNU General Public License v3.0 License. Please see [License File](LICENSE.md) for more information.
+This project is open source and available under the GNU General Public License v3.0 License. Please see [License File](LICENSE.txt) for more information.

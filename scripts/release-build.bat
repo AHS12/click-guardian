@@ -77,13 +77,16 @@ mkdir "%RELEASE_DIR%"
 REM Copy files to release directory
 copy "dist\click-guardian.exe" "%RELEASE_DIR%\" >nul
 
+for /f "tokens=2 delims==" %%Y in ('"wmic os get localdatetime /value | findstr ="') do set CURYEAR=%%Y
+set CURYEAR=!CURYEAR:~0,4!
+
 REM Create README for release
 (
 echo Click Guardian v%VERSION%
 echo.
 echo Prevents accidental double-clicks with configurable delay protection
 echo.
-echo © 2025 Click Guardian Project
+echo © %CURYEAR% Azizul Hakim
 echo.
 echo Build Information:
 echo - Version: %VERSION%
