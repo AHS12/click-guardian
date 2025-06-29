@@ -65,7 +65,7 @@ func NewApplication() *Application {
 	a := app.New()
 	a.SetIcon(GetAppIcon()) // Use our modern shield icon
 
-	cfg := config.DefaultConfig()
+	cfg := config.LoadConfig() // Load saved config instead of default
 	w := a.NewWindow("Click Guardian")
 
 	// Create log display
@@ -86,7 +86,7 @@ func NewApplication() *Application {
 		logContainer:          logContainer,
 		updateChan:            make(chan int, 10),
 		shutdownChan:          make(chan struct{}),
-		minimizeToTrayEnabled: true, // Default to true
+		minimizeToTrayEnabled: cfg.MinimizeToTray, // Use saved preference
 	}
 }
 
@@ -103,6 +103,7 @@ func (app *Application) Run() {
 	} else {
 		app.logger.Log("Enter a delay value and click 'Start Protection' to begin")
 	}
+	app.logger.Log("✅ Settings loaded: %dms delay, minimize to tray: %v", app.config.DelayMs, app.config.MinimizeToTray)
 
 	// Start a goroutine to update the blocked clicks counter
 	go app.updateBlockedClicksCounter()
@@ -140,6 +141,7 @@ func (app *Application) RunMinimized() {
 			app.logger.Log("🚀 Protection auto-started on Windows startup")
 		}()
 	}
+	app.logger.Log("✅ Settings loaded: %dms delay, minimize to tray: %v", app.config.DelayMs, app.config.MinimizeToTray)
 
 	// Start a goroutine to update the blocked clicks counter
 	go app.updateBlockedClicksCounter()
@@ -198,6 +200,7 @@ func (app *Application) RunWithAutoProtect() {
 			app.logger.Log("🚀 Protection auto-started")
 		}()
 	}
+	app.logger.Log("✅ Settings loaded: %dms delay, minimize to tray: %v", app.config.DelayMs, app.config.MinimizeToTray)
 
 	// Start a goroutine to update the blocked clicks counter
 	go app.updateBlockedClicksCounter()
@@ -259,13 +262,23 @@ func (app *Application) setupUI() {
 	// Update label when slider value changes
 	app.delaySlider.OnChanged = func(value float64) {
 		app.delayValueLabel.SetText(fmt.Sprintf("%.0f ms", value))
+		// Save the new delay value to config
+		app.config.DelayMs = int(value)
+		if err := app.config.Save(); err != nil {
+			app.logger.Log("⚠️ Failed to save delay setting: %v", err)
+		}
 	}
 
 	// Minimize to tray checkbox
 	app.minimizeToTrayCheck = widget.NewCheck("Minimize to system tray when closing", func(checked bool) {
 		app.minimizeToTrayEnabled = checked
+		// Save the minimize to tray preference
+		app.config.MinimizeToTray = checked
+		if err := app.config.Save(); err != nil {
+			app.logger.Log("⚠️ Failed to save minimize to tray setting: %v", err)
+		}
 	})
-	app.minimizeToTrayCheck.SetChecked(true)
+	app.minimizeToTrayCheck.SetChecked(app.config.MinimizeToTray)
 
 	// Auto-start checkbox
 	app.autoStartCheck = widget.NewCheck("Start with Windows and auto-enable protection", app.onAutoStartChanged)
