@@ -4,17 +4,44 @@
 
 ```
 click-guardian/
+├── assets/                      # Static assets
+│   ├── icon-modern-shield.svg
+│   ├── icon-modern-shield-solid.svg
+│   ├── icon-modern-shield-simplified.svg
+│   └── tray-icon.ico            # Source tray icon (ICO, for bundling)
+├── build/
+│   ├── build.conf               # Build configuration
+│   ├── scripts/
+│   │   ├── create-icon.ps1
+│   │   └── sign-code.bat
+│   ├── temp/
+│   │   ├── app.syso
+│   │   ├── click-guardian-v1.0.0-windows/
+│   │   │   ├── LICENSE.txt
+│   │   │   └── README.txt
+│   │   └── click-guardian-v1.0.1-windows/
+│   └── windows/
+│       ├── app-icon.ico
+│       ├── app-manifest.xml
+│       └── app.rc
 ├── cmd/
 │   └── click-guardian/          # Main application entry point
 │       └── main.go
+├── dist/                        # Build outputs (git ignored)
+├── docs/                        # Documentation
+│   ├── BUILD.md
+│   ├── DEVELOPMENT.md
+│   └── VSCODE_SETUP.md
 ├── internal/                    # Private application code
 │   ├── config/                  # Configuration management
 │   │   └── config.go
 │   ├── gui/                     # GUI application logic
 │   │   ├── app.go
 │   │   ├── icon.go
-│   │   ├── resources.go         # Auto-generated Fyne resources
-│   │   └── tray-icon.ico
+│   │   ├── resources.go         # All Fyne resources in one place (icon, SVG icon)
+│   │   ├── icon_resource.go     # Auto-generated: main app icon (SVG)
+│   │   ├── trayicon_resource.go # Auto-generated: tray icon (ICO)
+│   │
 │   ├── hooks/                   # Platform-specific mouse hooks
 │   │   ├── hook.go
 │   │   ├── hook_windows.go      # Windows implementation
@@ -23,22 +50,16 @@ click-guardian/
 │       └── logger.go
 ├── pkg/                         # Public packages (for future use)
 │   └── platform/                # Platform detection utilities
+│       ├── autostart_other.go
+│       ├── autostart_windows.go
 │       └── platform.go
 ├── scripts/                     # Build and development scripts
-│   ├── build.bat               # Windows build script
-│   ├── build.sh                # Cross-platform build script
-│   ├── dev.bat                 # Development runner
-│   ├── troubleshoot.bat        # VSCode troubleshooting
-│   └── README.md               # Scripts documentation
-├── docs/                        # Documentation
-│   ├── BUILD.md
-│   ├── DEVELOPMENT.md          # This file
-│   └── VSCODE_SETUP.md         # VSCode configuration guide
-├── assets/                      # Static assets
-│   ├── icon-modern-shield.svg          # Original icon
-│   ├── icon-modern-shield-solid.svg    # Current app icon (Fyne-compatible)
-│   └── icon-modern-shield-simplified.svg
-├── dist/                        # Build outputs (git ignored)
+│   ├── build.bat
+│   ├── build.sh
+│   ├── dev.bat
+│   ├── release-build.bat
+│   ├── troubleshoot.bat
+│   └── README.md
 ├── .vscode/                     # VSCode configuration
 ├── click-guardian.code-workspace # VSCode workspace file
 ├── go.mod
@@ -46,20 +67,66 @@ click-guardian/
 └── README.md
 ```
 
+---
+
 ## Installation & Building
 
 ### Prerequisites
 
-- **Windows operating system** (current platform)
-- **Go 1.24.1 or later**
-- **CGO enabled** (for Windows API integration)
+- **Windows operating system** (primary supported platform)
+- **Go 1.24.1 or later** ([download](https://go.dev/dl/))
+- **Fyne 2.6.1 or later** ([docs](https://fyne.io/))
+- **CGO enabled** (required for Windows API integration)
+
+#### Recommended Development Environment: MSYS2
+
+For the best experience building Fyne apps with CGO on Windows, use the [MSYS2](https://www.msys2.org/) environment:
+
+1. **Install MSYS2**  
+   Download and install from [msys2.org](https://www.msys2.org/).
+
+2. **Open the correct terminal**  
+   After installation, **do not use the default MSYS terminal**.  
+   Instead, open **“MSYS2 MinGW 64-bit”** from the Start menu.
+
+3. **Update MSYS2 and install required packages:**  
+   Run the following commands in the MinGW 64-bit terminal:
+
+   ```sh
+   pacman -Syu
+   pacman -S git mingw-w64-x86_64-toolchain mingw-w64-x86_64-go
+   ```
+
+4. **Add Go to your PATH:**  
+   To ensure Go binaries are available, add this to your shell profile:
+
+   ```sh
+   echo "export PATH=\$PATH:~/Go/bin" >> ~/.bashrc
+   ```
+
+5. **(Optional) Add MSYS2 tools to Windows PATH:**  
+   To use the compiler from other terminals or editors (like VSCode), add the following to your Windows system PATH:
+
+   ```
+   C:\msys64\mingw64\bin
+   ```
+
+   - Open “Edit the system environment variables” → Advanced → Environment Variables → Edit `Path`.
+
+6. **Install Fyne dependencies:**  
+   Follow the [Fyne Getting Started guide](https://docs.fyne.io/started/) for any additional setup.
+
+---
+
+**Tip:**  
+If you encounter build issues, ensure you are using the **MinGW 64-bit** terminal and that both Go and the C toolchain are available in your PATH.
 
 ### Quick Start
 
 1. **Clone the repository:**
 
    ```bash
-   git clone [repository-url]
+   git clone https://github.com/AHS12/click-guardian
    cd click-guardian
    ```
 
@@ -75,26 +142,23 @@ click-guardian/
    # Quick development build and run
    scripts\dev.bat
 
-   # Production build
+   #dev build
    scripts\build.bat
+
+   # Production build
+   scripts\release-build.bat
    ```
 
 ### Manual Build Options
 
-```bash
-# Build for current platform
-go build -o dist\click-guardian.exe .\cmd\click-guardian
-
-# Build with specific flags (production)
-go build -ldflags="-s -w" -o dist\click-guardian.exe .\cmd\click-guardian
-```
+you can read the `scripts\build.bat` to get all the build command
 
 ### Running the Application
 
 After building, run the executable:
 
 ```bash
-dist\click-guardian.exe
+go run .\cmd\click-guardian\main.go
 ```
 
 **For Development:**
@@ -171,7 +235,6 @@ Planned support:
 
 - Linux (X11/Wayland)
 - macOS
-- Web (via Fyne web compilation)
 
 ## Adding New Platforms
 
@@ -196,14 +259,20 @@ Planned support:
 
 ## Project Configuration
 
-### Icon Management
+## Icon Management
 
-The application uses SVG icons that are converted to Go resources:
+The application uses SVG and ICO icons that are converted to Go resources using `fyne bundle`:
 
 ```bash
-# Regenerate icon resources (if you update icons)
-fyne bundle -o internal/gui/resources.go assets/icon-modern-shield-solid.svg
+# Regenerate main app icon resource (SVG)
+fyne bundle -pkg resources -o internal/gui/resources/icon_resource.go assets/icon-modern-shield-solid.svg
+
+# Regenerate tray icon resource (ICO)
+fyne bundle -pkg resources -o internal/gui/resources/trayicon_resource.go assets/tray-icon.ico
 ```
+
+- **Note:** The generated files `icon_resource.go` and `trayicon_resource.go` are used directly by the application for icon resources.
+- If you update the icon files, rerun the above commands to regenerate the resources.
 
 ### Build Scripts
 

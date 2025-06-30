@@ -13,7 +13,7 @@ scripts\release-build.bat
 This will create:
 
 - `dist\click-guardian.exe` - Main application
-- `dist\click-guardian-v1.0.0-windows.zip` - Complete release package
+- `dist\click-guardian-v1.0.0-windows-portable.zip` - Complete release package
 
 ## 📋 Prerequisites
 
@@ -59,7 +59,7 @@ The simplified build process:
 
 1. **Load version** from `build\build.conf`
 2. **Get git info** (commit, builder name)
-3. **Generate Windows resource file** (icon, manifest, version info)  
+3. **Generate Windows resource file** (icon, manifest, version info)
    ```cmd
    windres build\windows\app.rc -O coff -o cmd\click-guardian\click-guardian.syso
    ```
@@ -70,8 +70,8 @@ The simplified build process:
 ### What Gets Built
 
 - **GUI Version** (`click-guardian.exe`) - Main application for end users  
-  *(Windows icon, manifest, and version info are embedded via `click-guardian.syso`)*
-- **Release Package** (`click-guardian-v1.0.0-windows.zip`) - Complete distribution package
+  _(Windows icon, manifest, and version info are embedded via `click-guardian.syso`)_
+- **Release Package** (`click-guardian-v1.0.0-windows-portable.zip`) - Complete distribution package
 
 ## 🔧 Manual Build Commands
 
@@ -106,7 +106,7 @@ The build process uses a Windows resource file to embed the application icon, ma
 - **Resource script:** `build/windows/app.rc`
 - **Icon:** `build/windows/app-icon.ico`
 - **Manifest:** `build/windows/app-manifest.xml`
-- **How to generate:**  
+- **How to generate:**
   ```cmd
   windres build\windows\app.rc -O coff -o cmd\click-guardian\click-guardian.syso
   ```
@@ -157,7 +157,7 @@ click-guardian-v1.0.0-windows/
    ```
 4. **Upload to GitHub**:
    - Go to GitHub → Releases → Create new release
-   - Upload `click-guardian-v1.0.0-windows.zip`
+   - Upload `click-guardian-v1.0.0-windows-portable.zip`
 
 ### Direct Distribution
 
@@ -228,7 +228,7 @@ scripts\release-build.bat
 
 1. Edit `build\build.conf` → change VERSION
 2. Run `scripts\release-build.bat`
-3. Upload `dist\click-guardian-v1.0.0-windows.zip`
+3. Upload `dist\click-guardian-v1.0.0-windows-portable.zip`
 
 **Simple build (no packaging):**
 

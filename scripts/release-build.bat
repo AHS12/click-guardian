@@ -44,6 +44,17 @@ REM Clean previous builds
 del /Q dist\*.exe 2>nul
 del /Q dist\*.zip 2>nul
 
+REM --- Update version in app.rc automatically ---
+set VERSION_RC=%VERSION:.=,%,0
+powershell -Command "(Get-Content build\windows\app.rc) -replace 'FILEVERSION [0-9,]+', 'FILEVERSION %VERSION_RC%' | Set-Content build\windows\app.rc"
+powershell -Command "(Get-Content build\windows\app.rc) -replace 'PRODUCTVERSION [0-9,]+', 'PRODUCTVERSION %VERSION_RC%' | Set-Content build\windows\app.rc"
+powershell -Command "(Get-Content build\windows\app.rc) -replace 'VALUE \"FileVersion\", \".*\"', 'VALUE \"FileVersion\", \"%VERSION%\"' | Set-Content build\windows\app.rc"
+powershell -Command "(Get-Content build\windows\app.rc) -replace 'VALUE \"ProductVersion\", \".*\"', 'VALUE \"ProductVersion\", \"%VERSION%\"' | Set-Content build\windows\app.rc"
+
+REM --- Update version in app-manifest.xml automatically ---
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[xml]$xml = Get-Content 'build\windows\app-manifest.xml'; $xml.assembly.assemblyIdentity.version = '%VERSION%.0'; $xml.Save((Resolve-Path 'build\windows\app-manifest.xml').Path)"
+
+
 REM Generate Windows resource file (icon, manifest, version info)
 echo Generating Windows resource file...
 windres build\windows\app.rc -O coff -o cmd\click-guardian\click-guardian.syso
@@ -120,10 +131,10 @@ if exist "LICENSE.md" copy "LICENSE.md" "%RELEASE_DIR%\" >nul
 
 REM Create ZIP using PowerShell
 echo Creating ZIP package...
-powershell -Command "Compress-Archive -Path '%RELEASE_DIR%\*' -DestinationPath 'dist\click-guardian-v%VERSION%-windows.zip' -Force"
+powershell -Command "Compress-Archive -Path '%RELEASE_DIR%\*' -DestinationPath 'dist\click-guardian-v%VERSION%-windows-portable.zip' -Force"
 
-if exist "dist\click-guardian-v%VERSION%-windows.zip" (
-    echo ✅ Release package created: dist\click-guardian-v%VERSION%-windows.zip
+if exist "dist\click-guardian-v%VERSION%-windows-portable.zip" (
+    echo ✅ Release package created: dist\click-guardian-v%VERSION%-windows-portable.zip
 ) else (
     echo ❌ Failed to create release package
 )
