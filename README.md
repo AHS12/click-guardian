@@ -56,12 +56,8 @@ _Tip: Start with the default 50ms delay - it works well for most users._
 
 1. Go to [Releases](../../releases) page
 2. Download the latest `click-guardian-v*.zip`
-3. Extract and run `click-guardian-gui.exe`
+3. Extract and run `click-guardian.exe`
 
-**Alternative downloads:**
-
-- `click-guardian-gui.exe` - Main application (recommended)
-- `click-guardian.exe` - Console version (shows debug output)
 
 ### Build from Source
 
