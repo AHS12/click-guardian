@@ -23,7 +23,7 @@ BEGIN
             VALUE "FileDescription", "Click Guardian - Double-Click Protection"
             VALUE "FileVersion", "1.0.0.0"
             VALUE "InternalName", "click-guardian"
-            VALUE "LegalCopyright", "© 2025 Click Guardian Project"
+            VALUE "LegalCopyright", "© 2025 Azizul hakim"
             VALUE "OriginalFilename", "click-guardian.exe"
             VALUE "ProductName", "Click Guardian"
             VALUE "ProductVersion", "1.0.0.0"

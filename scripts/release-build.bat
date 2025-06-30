@@ -44,6 +44,13 @@ REM Clean previous builds
 del /Q dist\*.exe 2>nul
 del /Q dist\*.zip 2>nul
 
+REM Generate Windows resource file (icon, manifest, version info)
+echo Generating Windows resource file...
+windres build\windows\app.rc -O coff -o cmd\click-guardian\click-guardian.syso
+
+echo Building release version...
+go build -ldflags "-s -w -H=windowsgui %VERSION_FLAGS%" -o dist\click-guardian.exe .\cmd\click-guardian
+
 REM Set version flags (keep it simple)
 set "VERSION_FLAGS=-X click-guardian/internal/version.Version=%VERSION% -X click-guardian/internal/version.GitCommit=%GIT_COMMIT% -X click-guardian/internal/version.BuildBy=%BUILD_BY%"
 

@@ -12,7 +12,7 @@ scripts\release-build.bat
 
 This will create:
 
-- `dist\click-guardian-gui.exe` - Main application
+- `dist\click-guardian.exe` - Main application
 - `dist\click-guardian-v1.0.0-windows.zip` - Complete release package
 
 ## 📋 Prerequisites
@@ -59,13 +59,18 @@ The simplified build process:
 
 1. **Load version** from `build\build.conf`
 2. **Get git info** (commit, builder name)
-3. **Build executables** with embedded version info
-4. **Create release package** with documentation
-5. **Generate ZIP file** ready for distribution
+3. **Generate Windows resource file** (icon, manifest, version info)  
+   ```cmd
+   windres build\windows\app.rc -O coff -o cmd\click-guardian\click-guardian.syso
+   ```
+4. **Build executables** with embedded version info
+5. **Create release package** with documentation
+6. **Generate ZIP file** ready for distribution
 
 ### What Gets Built
 
-- **GUI Version** (`click-guardian-gui.exe`) - Main application for end users
+- **GUI Version** (`click-guardian.exe`) - Main application for end users  
+  *(Windows icon, manifest, and version info are embedded via `click-guardian.syso`)*
 - **Release Package** (`click-guardian-v1.0.0-windows.zip`) - Complete distribution package
 
 ## 🔧 Manual Build Commands
@@ -93,6 +98,19 @@ set BUILD_BY=YourName
 # Build with version info
 go build -ldflags "-s -w -H=windowsgui -X click-guardian/internal/version.Version=%VERSION% -X click-guardian/internal/version.GitCommit=%GIT_COMMIT% -X click-guardian/internal/version.BuildBy=%BUILD_BY%" -o dist\click-guardian-gui.exe .\cmd\click-guardian
 ```
+
+## 📝 Windows Resource File (`.syso`)
+
+The build process uses a Windows resource file to embed the application icon, manifest, and version info into the executable.
+
+- **Resource script:** `build/windows/app.rc`
+- **Icon:** `build/windows/app-icon.ico`
+- **Manifest:** `build/windows/app-manifest.xml`
+- **How to generate:**  
+  ```cmd
+  windres build\windows\app.rc -O coff -o cmd\click-guardian\click-guardian.syso
+  ```
+- The `.syso` file must be in the same directory as `main.go` (`cmd\click-guardian\`).
 
 ## 🔐 Code Signing (Optional)
 
