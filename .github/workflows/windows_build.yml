@@ -15,36 +15,96 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '^1.24'  # Alt: Use latest stable version go-version: 'stable'
+          go-version: '^1.24'
+          # Alternatively: go-version: 'stable'
+      - name: Set up MinGW for CGO (required for Fyne)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-pkg-config
 
-      - name: Verify Go installation
-        run: go version
+      - name: Add MinGW to PATH and set CGO vars
+        shell: pwsh
+        run: |
+          $mingwPath = "C:\msys64\mingw64\bin"
+          echo $mingwPath >> $env:GITHUB_PATH
+          echo "CC=gcc" >> $env:GITHUB_ENV
+          echo "CXX=g++" >> $env:GITHUB_ENV
+          echo "CGO_ENABLED=1" >> $env:GITHUB_ENV
+
+      - name: Verify Go installation and CGO setup
+        run: |
+          go version
+          gcc --version
+          echo "CGO_ENABLED: $env:CGO_ENABLED"
 
       - name: Check go.mod exists
+        shell: cmd
         run: |
-          if (-not (Test-Path "go.mod")) {
-            Write-Host "❌ go.mod not found!"
-            exit 1
-          }
-          Write-Host "✅ go.mod found"
+          if not exist go.mod (
+            echo "❌ go.mod not found!"
+            exit /b 1
+          )
+          echo "✅ go.mod found"
 
       - name: Install Go dependencies
+        shell: cmd
         run: |
-          Write-Host "Downloading dependencies..."
+          echo "Downloading dependencies..."
           go mod download -x
-          Write-Host "Dependencies downloaded successfully"
+          echo "Dependencies downloaded successfully"
 
-      - name: Run build script
-        run: scripts\build.bat
+      - name: Create dist directory
+        shell: cmd
+        run: if not exist "dist" mkdir dist
+
+      - name: Clean previous builds
+        shell: cmd
+        run: del /Q dist\*.exe 2>nul || echo "No previous builds to clean"
+
+      - name: Check Go and CGO environment
+        run: |
+          go version
+          go env GOOS GOARCH CGO_ENABLED CC CXX
+
+      - name: List dependencies
+        run: go list -m all
+
+      - name: Build GUI version
+        shell: cmd
+        run: |
+          echo Building GUI version...
+          go build -v -ldflags "-s -w -H=windowsgui" -o dist\click-guardian-gui.exe .\cmd\click-guardian
+          if %ERRORLEVEL% EQU 0 (
+            echo ✅ GUI build successful!
+          ) else (
+            echo ❌ GUI build failed with error code %ERRORLEVEL%!
+          )
+
+      - name: Build console version
+        shell: cmd
+        run: |
+          echo Building console version...
+          go build -v -ldflags "-s -w" -o dist\click-guardian.exe .\cmd\click-guardian
+          if %ERRORLEVEL% EQU 0 (
+            echo ✅ Console build successful!
+          ) else (
+            echo ❌ Console build failed with error code %ERRORLEVEL%!
+            exit /b 1
+          )
 
       - name: Check if EXE was generated
+        shell: cmd
         run: |
-          if (-not (Test-Path "dist\click-guardian-gui.exe")) {
-            Write-Host "❌ GUI EXE not found!"
-            exit 1
-          }
-          if (-not (Test-Path "dist\click-guardian.exe")) {
-            Write-Host "❌ Console EXE not found!"
-            exit 1
-          }
-          Write-Host "✅ Both EXE files found."
+          if not exist dist\click-guardian-gui.exe (
+            echo "❌ GUI EXE not found!"
+            exit /b 1
+          )
+          if not exist dist\click-guardian.exe (
+            echo "❌ Console EXE not found!"
+            exit /b 1
+          )
+          echo "✅ Both EXE files found."
