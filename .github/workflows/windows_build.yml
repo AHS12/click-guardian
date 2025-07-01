@@ -1,0 +1,33 @@
+name: Build Check(Windows)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.1'
+
+      - name: Run build script
+        run: scripts\build.bat
+
+      - name: Check if EXE was generated
+        run: |
+          if not exist dist\click-guardian-gui.exe (
+            echo "❌ GUI EXE not found!"
+            exit /b 1
+          )
+          if not exist dist\click-guardian.exe (
+            echo "❌ Console EXE not found!"
+            exit /b 1
+          )
+          echo "✅ Both EXE files found."
