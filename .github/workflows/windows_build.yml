@@ -34,6 +34,9 @@ jobs:
           go mod download -x
           Write-Host "Dependencies downloaded successfully"
 
+      - name: Run build script
+        run: scripts\build.bat
+
       - name: Check if EXE was generated
         run: |
           if (-not (Test-Path "dist\click-guardian-gui.exe")) {
