@@ -43,6 +43,7 @@ if not exist "dist" mkdir dist
 REM Clean previous builds
 del /Q dist\*.exe 2>nul
 del /Q dist\*.zip 2>nul
+del /Q dist\*.msi 2>nul
 
 REM --- Update version in app.rc automatically ---
 set VERSION_RC=%VERSION:.=,%,0
@@ -53,6 +54,15 @@ powershell -Command "(Get-Content build\windows\app.rc) -replace 'VALUE \"Produc
 
 REM --- Update version in app-manifest.xml automatically ---
 powershell -NoProfile -ExecutionPolicy Bypass -Command "[xml]$xml = Get-Content 'build\windows\app-manifest.xml'; $xml.assembly.assemblyIdentity.version = '%VERSION%.0'; $xml.Save((Resolve-Path 'build\windows\app-manifest.xml').Path)"
+
+REM --- Update version in wix.json automatically ---
+powershell -Command "(Get-Content wix.json) -replace '\"version\": \".*\"', '\"version\": \"%VERSION%\"' | Set-Content wix.json"
+
+REM --- Generate new product-code for this version ---
+echo Generating new product code for version %VERSION%...
+for /f "delims=" %%A in ('powershell -Command "[System.Guid]::NewGuid().ToString()"') do set NEW_PRODUCT_CODE=%%A
+powershell -Command "(Get-Content wix.json) -replace '\"product-code\": \".*\"', '\"product-code\": \"%NEW_PRODUCT_CODE%\"' | Set-Content wix.json"
+echo New product code: %NEW_PRODUCT_CODE%
 
 
 REM Generate Windows resource file (icon, manifest, version info)
@@ -139,6 +149,57 @@ if exist "dist\click-guardian-v%VERSION%-windows-portable.zip" (
     echo ❌ Failed to create release package
 )
 
+REM Create MSI installer
+echo.
+echo Creating MSI installer...
+REM Copy icon from assets to root for WiX
+if exist "assets\icon.ico" (
+    copy "assets\icon.ico" "icon.ico" >nul
+    echo Icon copied from assets folder
+)
+
+REM Copy executable to project root (go-msi cross-drive fix)
+if exist "dist\click-guardian.exe" (
+    copy "dist\click-guardian.exe" "click-guardian.exe" >nul
+    echo Executable copied for MSI build (cross-drive fix)
+)
+
+REM Get current drive letter for temp directory fix
+set CURRENT_DRIVE=%CD:~0,2%
+set MSI_TEMP_DIR=%CURRENT_DRIVE%\temp
+
+REM Create temp directory on same drive if it doesn't exist
+if not exist "%MSI_TEMP_DIR%" mkdir "%MSI_TEMP_DIR%"
+
+REM Build MSI installer with cross-drive fix
+echo Setting temp directory to %MSI_TEMP_DIR% to avoid cross-drive issues...
+set ORIGINAL_TMP=%TMP%
+set ORIGINAL_TEMP=%TEMP%
+set TMP=%MSI_TEMP_DIR%
+set TEMP=%MSI_TEMP_DIR%
+
+go-msi make --msi dist\click-guardian-installer.msi --version %VERSION% --src templates
+
+REM Restore original temp directories
+set TMP=%ORIGINAL_TMP%
+set TEMP=%ORIGINAL_TEMP%
+
+if %ERRORLEVEL% EQU 0 (
+    echo ✅ MSI installer created: dist\click-guardian-installer.msi
+) else (
+    echo ❌ Failed to create MSI installer
+)
+
+REM Clean up temporary files
+if exist "icon.ico" (
+    del "icon.ico" >nul
+    echo Temporary icon file cleaned up
+)
+if exist "click-guardian.exe" (
+    del "click-guardian.exe" >nul
+    echo Temporary executable file cleaned up
+)
+
 :end
 echo.
 echo =====================================
@@ -146,7 +207,7 @@ echo   🎉 RELEASE BUILD COMPLETE!
 echo =====================================
 echo.
 echo Files created:
-dir dist\*.exe dist\*.zip 2>nul
+dir dist\*.exe dist\*.zip dist\*.msi 2>nul
 echo.
 echo Version: %VERSION%
 echo Ready for distribution! 🚀

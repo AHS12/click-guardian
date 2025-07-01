@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" Name="{{.Product}}" Language="1033" Version="{{.Version}}" Manufacturer="{{.Company}}" UpgradeCode="{{.UpgradeCode}}">
+    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" Description="{{.Product}} {{.Version}} Installer" Comments="{{.Product}} version {{.Version}}" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    
+    <MediaTemplate EmbedCab="yes" />
+
+    {{if .License}}
+    <WixVariable Id="WixUILicenseRtf" Value="{{.License}}" />
+    {{end}}
+
+    <Feature Id="ProductFeature" Title="{{.Product}}" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+      {{range $i, $shortcut := .Shortcuts.Items}}
+      <ComponentRef Id="shortcut_{{$i}}" />
+      {{end}}
+    </Feature>
+
+    <UI>
+      <UIRef Id="WixUI_Minimal" />
+    </UI>
+  </Product>
+
+  <Fragment>
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="INSTALLDIR" Name="{{.Product}}" />
+      </Directory>
+      <Directory Id="ProgramMenuFolder" />
+      <Directory Id="DesktopFolder" />
+    </Directory>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLDIR">
+      {{range $i, $file := .Files.Items}}
+      <Component Id="file_{{$i}}" Guid="{{$.Files.GUID}}">
+        <File Id="file_{{$i}}" Source="{{$file}}" KeyPath="yes" Checksum="yes"/>
+      </Component>
+      {{end}}
+    </ComponentGroup>
+    
+    {{range $i, $shortcut := .Shortcuts.Items}}
+    <Component Id="shortcut_{{$i}}" Directory="{{$shortcut.WDir}}" Guid="*">
+      <Shortcut Id="shortcut_{{$i}}" Name="{{$shortcut.Name}}" Description="{{$shortcut.Description}}" Target="{{$shortcut.Target}}"{{if $shortcut.Arguments}} Arguments="{{$shortcut.Arguments}}"{{end}}{{if $shortcut.Icon}} Icon="ico_{{$i}}"{{end}} />
+      {{if eq $shortcut.WDir "DesktopFolder"}}
+      <RemoveFolder Id="remove_desktop_{{$i}}" Directory="DesktopFolder" On="uninstall"/>
+      {{end}}
+      {{if eq $shortcut.WDir "ProgramMenuFolder"}}
+      <RemoveFolder Id="remove_startmenu_{{$i}}" Directory="ProgramMenuFolder" On="uninstall"/>
+      {{end}}
+      <RegistryValue Root="HKCU" Key="Software\Microsoft\{{$.Company}}\{{$.Product}}" Name="shortcut_{{$i}}" Type="integer" Value="1" KeyPath="yes"/>
+    </Component>
+    {{end}}
+  </Fragment>
+  
+  {{if .Shortcuts.Items}}
+  <Fragment>
+    {{range $i, $shortcut := .Shortcuts.Items}}
+    {{if $shortcut.Icon}}
+    <Icon Id="ico_{{$i}}" SourceFile="{{$shortcut.Icon}}" />
+    {{end}}
+    {{end}}
+  </Fragment>
+  {{end}}
+</Wix>
