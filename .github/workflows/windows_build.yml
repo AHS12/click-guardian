@@ -15,10 +15,24 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.1'
+          go-version: 'stable'  # Use latest stable version
+
+      - name: Verify Go installation
+        run: go version
+
+      - name: Check go.mod exists
+        run: |
+          if not exist go.mod (
+            echo "❌ go.mod not found!"
+            exit /b 1
+          )
+          echo "✅ go.mod found"
 
       - name: Install Go dependencies
-        run: go mod download
+        run: |
+          echo "Downloading dependencies..."
+          go mod download -x
+          echo "Dependencies downloaded successfully"
 
       - name: Run build script
         run: scripts\build.bat
