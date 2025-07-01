@@ -16,8 +16,8 @@
 
 - 🎯 **Strict Double-Click Blocking**: Ensures no double-clicks are allowed under any circumstances
 - ⚙️ **Customizable Delay**: Set delay from 5ms to 500ms (default: 50ms)
-- � **Adaptive Protection**: Automatically increases delay when faulty mouse hardware is detected (never decreases below user setting)
-- �📊 **Real-time Logging**: Detailed logs for allowed and blocked clicks, including reasons and timestamps
+- 🛡️ **Adaptive Protection**: Automatically increases delay when faulty mouse hardware is detected (never decreases below user setting)
+- 📊 **Real-time Logging**: Detailed logs for allowed and blocked clicks, including reasons and timestamps
 - 🖥️ **Modern GUI**: Clean and intuitive Fyne-based interface
 - 🚀 **Lightweight**: Minimal resource usage
 - 🛡️ **Safe**: Only monitors clicks, doesn't interfere with other mouse operations
@@ -56,12 +56,8 @@ _Tip: Start with the default 50ms delay - it works well for most users._
 
 1. Go to [Releases](../../releases) page
 2. Download the latest `click-guardian-v*.zip`
-3. Extract and run `click-guardian-gui.exe`
+3. Extract and run `click-guardian.exe`
 
-**Alternative downloads:**
-
-- `click-guardian-gui.exe` - Main application (recommended)
-- `click-guardian.exe` - Console version (shows debug output)
 
 ### Build from Source
 

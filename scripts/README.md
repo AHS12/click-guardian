@@ -16,6 +16,9 @@ scripts\troubleshoot.bat
 
 # Cross-platform build (Linux/macOS)
 scripts/build.sh
+
+# release build(windows)
+scripts/release-build.bat
 ```
 
 ## Documentation
@@ -39,5 +42,6 @@ This document covers:
 - **`build.sh`** - Cross-platform build script
 - **`dev.bat`** - Quick development testing
 - **`troubleshoot.bat`** - Go/CGO setup diagnosis
+- **`release-build.bat`** - Production release build (windows)
 
 All scripts can be run from anywhere in the project directory.

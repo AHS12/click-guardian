@@ -3,8 +3,8 @@
 ICON_ID ICON "app-icon.ico"
 
 1 VERSIONINFO
-FILEVERSION 1,0,0,0
-PRODUCTVERSION 1,0,0,0
+FILEVERSION 1,0,1,0
+PRODUCTVERSION 1,0,1,0
 FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
 FILEFLAGS 0x1L
@@ -21,12 +21,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Click Guardian Project"
             VALUE "FileDescription", "Click Guardian - Double-Click Protection"
-            VALUE "FileVersion", "1.0.0.0"
+            VALUE "FileVersion", "1.0.1"
             VALUE "InternalName", "click-guardian"
-            VALUE "LegalCopyright", "© 2025 Click Guardian Project"
+            VALUE "LegalCopyright", "© 2025 Azizul hakim"
             VALUE "OriginalFilename", "click-guardian.exe"
             VALUE "ProductName", "Click Guardian"
-            VALUE "ProductVersion", "1.0.0.0"
+            VALUE "ProductVersion", "1.0.1"
             VALUE "Comments", "Prevents accidental double-clicks with configurable delay protection"
         END
     END

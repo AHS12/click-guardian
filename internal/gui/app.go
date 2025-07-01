@@ -3,7 +3,6 @@ package gui
 import (
 	"fmt"
 	"image/color"
-	"net/url"
 	"sync"
 	"time"
 
@@ -11,13 +10,15 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"fyne.io/systray"
 
 	"click-guardian/internal/config"
+	"click-guardian/internal/gui/components"
+	"click-guardian/internal/gui/dialogs"
+	"click-guardian/internal/gui/resources"
 	"click-guardian/internal/hooks"
 	"click-guardian/internal/logger"
 	"click-guardian/internal/version"
@@ -47,7 +48,6 @@ type Application struct {
 	logContainer        *container.Scroll
 	minimizeToTrayCheck *widget.Check
 	autoStartCheck      *widget.Check
-	// appIconWidget       *widget.Icon
 	updateChan     chan int
 	updateChanOnce sync.Once
 
@@ -66,7 +66,7 @@ type Application struct {
 // NewApplication creates a new GUI application
 func NewApplication() *Application {
 	a := app.New()
-	a.SetIcon(GetAppIcon()) // Use our modern shield icon
+	a.SetIcon(resources.GetAppIcon()) // Use our modern shield icon
 
 	cfg := config.LoadConfig() // Load saved config instead of default
 
@@ -302,7 +302,7 @@ func (app *Application) setupUI() {
 
 	// About button
 	aboutButton := widget.NewButton("About", func() {
-		app.showAboutDialog()
+		dialogs.ShowAboutDialog(app.window)
 	})
 
 	// --- Layout ---
@@ -313,7 +313,7 @@ func (app *Application) setupUI() {
 	)
 
 	// Status and statistics section with the new indicator
-	hoverIndicator := NewHoverAware(statusIndicator, func() string {
+	hoverIndicator := components.NewHoverAware(statusIndicator, func() string {
 		if app.isRunning {
 			return "Status: Active"
 		} else {
@@ -475,7 +475,7 @@ func (app *Application) setupSystemTray() {
 // onTrayReady is called when the system tray is ready
 func (app *Application) onTrayReady() {
 	// Set the system tray icon
-	systray.SetIcon(getTrayIcon())
+	systray.SetIcon(resources.GetTrayIcon().Content())
 	systray.SetTitle("Click Guardian")
 
 	// Set initial tooltip
@@ -729,100 +729,4 @@ func (app *Application) onAutoStartChanged(checked bool) {
 func (app *Application) updateAutoStartStatus() {
 	isEnabled := platform.IsAutoStartEnabled()
 	app.autoStartCheck.SetChecked(isEnabled)
-}
-
-// showAboutDialog displays the About dialog with application information
-func (app *Application) showAboutDialog() {
-	appInfo := version.GetAppInfo()
-
-	// Create icon for the dialog
-	icon := widget.NewIcon(GetAppIcon())
-
-	// Centered About header
-	headerText := canvas.NewText("About", color.White)
-	headerText.TextStyle = fyne.TextStyle{Bold: true}
-	headerText.TextSize = 22
-	headerText.Alignment = fyne.TextAlignCenter
-
-	// App name and version
-	titleText := canvas.NewText("Click Guardian", color.White)
-	titleText.TextStyle = fyne.TextStyle{Bold: true}
-	titleText.TextSize = 20
-	titleText.Alignment = fyne.TextAlignCenter
-
-	versionText := canvas.NewText(fmt.Sprintf("Version %s", appInfo.Version), color.White)
-	versionText.Alignment = fyne.TextAlignCenter
-
-	// Build information - only show if we have proper build info
-	var buildText *widget.Label
-	if appInfo.BuildTime != "unknown" && appInfo.GitCommit != "unknown" {
-		buildInfo := fmt.Sprintf("Built: %s\nCommit: %s\nBy: %s",
-			appInfo.BuildTime,
-			appInfo.GitCommit[:min(len(appInfo.GitCommit), 8)],
-			appInfo.BuildBy)
-		buildText = widget.NewLabel(buildInfo)
-		buildText.Alignment = fyne.TextAlignCenter
-	}
-
-	// System information
-	systemInfo := fmt.Sprintf("Platform: %s %s\nGo: %s",
-		appInfo.Platform,
-		appInfo.Arch,
-		appInfo.GoVersion)
-	systemText := widget.NewLabel(systemInfo)
-	systemText.Alignment = fyne.TextAlignCenter
-
-	// Description
-	descText := widget.NewLabel(appInfo.Description)
-	descText.Wrapping = fyne.TextWrapWord
-	descText.Alignment = fyne.TextAlignCenter
-	// License and copyright
-	copyrightText := widget.NewLabel(appInfo.Copyright)
-	copyrightText.Alignment = fyne.TextAlignCenter
-
-	licenseText := widget.NewLabel("License: GNU General Public License v3.0")
-	licenseText.Alignment = fyne.TextAlignCenter
-
-	// GitHub link - using hyperlink for clickable link
-	githubURL, _ := url.Parse("https://github.com/ahs12/click-guardian")
-	githubLink := widget.NewHyperlink("GitHub Repository", githubURL)
-	githubLink.Alignment = fyne.TextAlignCenter
-
-	// Create content with proper spacing
-	content := container.NewVBox(
-		container.NewHBox(layout.NewSpacer(), icon, layout.NewSpacer()),
-		container.NewCenter(headerText),
-		widget.NewSeparator(),
-		container.NewCenter(titleText),
-		container.NewCenter(versionText),
-	)
-
-	// Add build info section only if we have it
-	if buildText != nil {
-		content.Add(widget.NewSeparator())
-		content.Add(buildText)
-	}
-
-	// Add remaining sections
-	content.Add(widget.NewSeparator())
-	content.Add(systemText)
-	content.Add(widget.NewSeparator())
-	content.Add(descText)
-	content.Add(widget.NewSeparator())
-	content.Add(copyrightText)
-	content.Add(licenseText)
-	content.Add(githubLink)
-
-	// Create and show the dialog with no window title
-	aboutDialog := dialog.NewCustom("", "Close", content, app.window)
-	aboutDialog.Resize(fyne.NewSize(400, 500))
-	aboutDialog.Show()
-}
-
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
