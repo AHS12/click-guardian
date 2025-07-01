@@ -15,36 +15,33 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 'stable'  # Use latest stable version
+          go-version: '^1.24'  # Alt: Use latest stable version go-version: 'stable'
 
       - name: Verify Go installation
         run: go version
 
       - name: Check go.mod exists
         run: |
-          if not exist go.mod (
-            echo "❌ go.mod not found!"
-            exit /b 1
-          )
-          echo "✅ go.mod found"
+          if (-not (Test-Path "go.mod")) {
+            Write-Host "❌ go.mod not found!"
+            exit 1
+          }
+          Write-Host "✅ go.mod found"
 
       - name: Install Go dependencies
         run: |
-          echo "Downloading dependencies..."
+          Write-Host "Downloading dependencies..."
           go mod download -x
-          echo "Dependencies downloaded successfully"
-
-      - name: Run build script
-        run: scripts\build.bat
+          Write-Host "Dependencies downloaded successfully"
 
       - name: Check if EXE was generated
         run: |
-          if not exist dist\click-guardian-gui.exe (
-            echo "❌ GUI EXE not found!"
-            exit /b 1
-          )
-          if not exist dist\click-guardian.exe (
-            echo "❌ Console EXE not found!"
-            exit /b 1
-          )
-          echo "✅ Both EXE files found."
+          if (-not (Test-Path "dist\click-guardian-gui.exe")) {
+            Write-Host "❌ GUI EXE not found!"
+            exit 1
+          }
+          if (-not (Test-Path "dist\click-guardian.exe")) {
+            Write-Host "❌ Console EXE not found!"
+            exit 1
+          }
+          Write-Host "✅ Both EXE files found."
