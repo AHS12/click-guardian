@@ -13,6 +13,9 @@
   <a href="https://github.com/AHS12/click-guardian/releases">
     <img src="https://img.shields.io/github/v/release/AHS12/click-guardian" alt="Latest Release">
   </a>
+  <a href="https://github.com/AHS12/click-guardian/actions/workflows/windows_build.yml">
+    <img src="https://github.com/AHS12/click-guardian/actions/workflows/windows_build.yml/badge.svg" alt="Build Status">
+  </a>
 </p>
 
 
