@@ -1,8 +1,15 @@
-<p align="center">
-  <img src="assets/icon-modern-shield.svg" alt="Click Guardian Logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;">
-  <strong style="font-size: 32px; vertical-align: middle;">Click Guardian</strong>
-</p>
+<table align="center" border="0" cellpadding="0" cellspacing="0" style="border-collapse: collapse; border: none; margin: 0 auto;">
+  <tr>
+    <td style="border: none; padding: 0;">
+      <img src="assets/icon-modern-shield.svg" alt="Click Guardian Logo" width="64" height="64">
+    </td>
+    <td style="padding-left: 10px; vertical-align: middle; font-size: 28px; font-weight: bold; border: none; padding: 0;">
+      Click Guardian
+    </td>
+  </tr>
+</table>
 
+---
 <p align="center">
   <a href="https://github.com/AHS12/click-guardian/releases">
     <img src="https://img.shields.io/github/downloads/AHS12/click-guardian/total" alt="Downloads">
