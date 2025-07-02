@@ -1,8 +1,20 @@
 <p align="center">
-  <img src="assets/icon-modern-shield.svg" alt="Click Guardian Logo" width="128" height="128">
+  <img src="assets/icon-modern-shield.svg" alt="Click Guardian Logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;">
+  <strong style="font-size: 32px; vertical-align: middle;">Click Guardian</strong>
 </p>
 
-<h1 align="center">Click Guardian</h1>
+<p align="center">
+  <a href="https://github.com/AHS12/click-guardian/releases">
+    <img src="https://img.shields.io/github/downloads/AHS12/click-guardian/total" alt="Downloads">
+  </a>
+  <a href="https://github.com/AHS12/click-guardian/stargazers">
+    <img src="https://img.shields.io/github/stars/AHS12/click-guardian" alt="Stars">
+  </a>
+  <a href="https://github.com/AHS12/click-guardian/releases">
+    <img src="https://img.shields.io/github/v/release/AHS12/click-guardian" alt="Latest Release">
+  </a>
+</p>
+
 
 <p align="center">
   <strong>An application that prevents accidental double-clicks by introducing a customizable delay between mouse clicks - currently available on Windows.</strong>
