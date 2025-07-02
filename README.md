@@ -67,8 +67,9 @@ _Tip: Start with the default 50ms delay - it works well for most users._
 **Official releases with proper versioning, code signing, and Windows integration:**
 
 1. Go to [Releases](../../releases) page
-2. Download the latest `click-guardian-v*.zip`
+2. Download the latest portable version `click-guardian-v*.zip`
 3. Extract and run `click-guardian.exe`
+4. Or you can download and install using the `msi` installer `click-guardian-installer.msi`
 
 
 ### Build from Source
