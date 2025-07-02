@@ -1,8 +1,30 @@
+<table align="center" border="0" cellpadding="0" cellspacing="0" style="border-collapse: collapse; border: none; margin: 0 auto;">
+  <tr>
+    <td style="border: none; padding: 0;">
+      <img src="assets/icon-modern-shield.svg" alt="Click Guardian Logo" width="64" height="64">
+    </td>
+    <td style="padding-left: 10px; vertical-align: middle; font-size: 28px; font-weight: bold; border: none; padding: 0;">
+      Click Guardian
+    </td>
+  </tr>
+</table>
+
+---
 <p align="center">
-  <img src="assets/icon-modern-shield.svg" alt="Click Guardian Logo" width="128" height="128">
+  <a href="https://github.com/AHS12/click-guardian/releases">
+    <img src="https://img.shields.io/github/downloads/AHS12/click-guardian/total" alt="Downloads">
+  </a>
+  <a href="https://github.com/AHS12/click-guardian/stargazers">
+    <img src="https://img.shields.io/github/stars/AHS12/click-guardian" alt="Stars">
+  </a>
+  <a href="https://github.com/AHS12/click-guardian/releases">
+    <img src="https://img.shields.io/github/v/release/AHS12/click-guardian" alt="Latest Release">
+  </a>
+  <a href="https://github.com/AHS12/click-guardian/actions/workflows/windows_build.yml">
+    <img src="https://github.com/AHS12/click-guardian/actions/workflows/windows_build.yml/badge.svg" alt="Build Status">
+  </a>
 </p>
 
-<h1 align="center">Click Guardian</h1>
 
 <p align="center">
   <strong>An application that prevents accidental double-clicks by introducing a customizable delay between mouse clicks - currently available on Windows.</strong>
@@ -55,8 +77,9 @@ _Tip: Start with the default 50ms delay - it works well for most users._
 **Official releases with proper versioning, code signing, and Windows integration:**
 
 1. Go to [Releases](../../releases) page
-2. Download the latest `click-guardian-v*.zip`
+2. Download the latest portable version `click-guardian-v*.zip`
 3. Extract and run `click-guardian.exe`
+4. Or you can download and install using the `msi` installer `click-guardian-installer.msi`
 
 
 ### Build from Source

@@ -31,6 +31,13 @@ click-guardian-installer/
   
   # Option 3: Using winget
   winget install WiXToolset.WiXToolset
+
+  #latest wix
+  https://docs.firegiant.com/wix/using-wix/
+  dotnet tool install --global wix
+
+  #verify wix
+  wix --version
   ```
   > ⚠️ **Important**: After installation, restart your terminal/command prompt to ensure WiX tools (`candle.exe` and `light.exe`) are in your PATH.
 
