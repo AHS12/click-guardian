@@ -21,6 +21,7 @@ var (
 	procGetMessage       = user32.NewProc("GetMessageW")
 	procTranslateMessage = user32.NewProc("TranslateMessage")
 	procDispatchMessage  = user32.NewProc("DispatchMessageW")
+	procGetSystemMetrics = user32.NewProc("GetSystemMetrics")
 )
 
 const (
@@ -30,6 +31,10 @@ const (
 	WM_RBUTTONDOWN = 0x0204
 	WM_RBUTTONUP   = 0x0205
 	WM_MOUSEMOVE   = 0x0200
+	WM_MBUTTONDOWN = 0x0207
+	WM_MBUTTONUP   = 0x0208
+	WM_XBUTTONDOWN = 0x020B
+	WM_XBUTTONUP   = 0x020C
 )
 
 type POINT struct {
@@ -53,7 +58,7 @@ type MSG struct {
 	Pt      POINT
 }
 
-type windowsHook struct {
+type WindowsHook struct {
 	hook              syscall.Handle
 	delay             time.Duration
 	lastCompleteClick time.Time
@@ -75,15 +80,18 @@ type windowsHook struct {
 	lastDownTime    map[uintptr]time.Time // Track last DOWN event time
 	lastDownBlocked map[uintptr]bool      // Track if last DOWN was blocked
 	lastUpTime      map[uintptr]time.Time // Track last UP event time
+	
+	// Protected buttons configuration
+	protectedButtons map[string]bool
 }
 
 func newPlatformHook() MouseHook {
-	return &windowsHook{}
+	return &WindowsHook{}
 }
 
-var globalHook *windowsHook
+var globalHook *WindowsHook
 
-func (w *windowsHook) sendLog(msg string) {
+func (w *WindowsHook) sendLog(msg string) {
 	select {
 	case w.logChannel <- msg:
 	default:
@@ -104,10 +112,53 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 	}
 
 	switch wParam {
-	case WM_LBUTTONDOWN, WM_RBUTTONDOWN:
+	case WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_XBUTTONDOWN:
 		buttonName := "Left"
-		if wParam == WM_RBUTTONDOWN {
+		isProtected := globalHook.protectedButtons["left"]
+		
+		switch wParam {
+		case WM_LBUTTONDOWN:
+			buttonName = "Left"
+			isProtected = globalHook.protectedButtons["left"]
+		case WM_RBUTTONDOWN:
 			buttonName = "Right"
+			isProtected = globalHook.protectedButtons["right"]
+		case WM_MBUTTONDOWN:
+			buttonName = "Middle"
+			isProtected = globalHook.protectedButtons["middle"]
+		case WM_XBUTTONDOWN:
+			// For XBUTTON events in low-level mouse hook, button info is in high word of mouseData
+			mouseStruct := (*MSLLHOOKSTRUCT)(unsafe.Pointer(lParam))
+			buttonFlag := uint32(mouseStruct.MouseData >> 16) & 0xFFFF
+			
+			// Check which X button is pressed based on the high word of mouseData
+			if buttonFlag == 1 { // XBUTTON1
+				buttonName = "XBUTTON1"
+				isProtected = globalHook.protectedButtons["xbutton1"]
+			} else if buttonFlag == 2 { // XBUTTON2
+				buttonName = "XBUTTON2"
+				isProtected = globalHook.protectedButtons["xbutton2"]
+			} else {
+				// Unknown XBUTTON, allow through
+				ret, _, _ := procCallNextHookEx.Call(
+					uintptr(globalHook.hook),
+					uintptr(nCode),
+					wParam,
+					lParam,
+				)
+				return ret
+			}
+		}
+
+		// If this button is not protected, allow the event through
+		if !isProtected {
+			ret, _, _ := procCallNextHookEx.Call(
+				uintptr(globalHook.hook),
+				uintptr(nCode),
+				wParam,
+				lParam,
+			)
+			return ret
 		}
 
 		now := time.Now()
@@ -157,15 +208,60 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 		globalHook.dragDetected[wParam] = false
 		globalHook.sendLog(fmt.Sprintf("✅ ALLOWED: %s button press", buttonName))
 
-	case WM_LBUTTONUP, WM_RBUTTONUP:
+	case WM_LBUTTONUP, WM_RBUTTONUP, WM_MBUTTONUP, WM_XBUTTONUP:
 		// Determine which button was released
 		var downEvent uintptr
 		buttonName := "Left"
-		if wParam == WM_LBUTTONUP {
+		isProtected := globalHook.protectedButtons["left"]
+		
+		switch wParam {
+		case WM_LBUTTONUP:
 			downEvent = WM_LBUTTONDOWN
-		} else {
+			buttonName = "Left"
+			isProtected = globalHook.protectedButtons["left"]
+		case WM_RBUTTONUP:
 			downEvent = WM_RBUTTONDOWN
 			buttonName = "Right"
+			isProtected = globalHook.protectedButtons["right"]
+		case WM_MBUTTONUP:
+			downEvent = WM_MBUTTONDOWN
+			buttonName = "Middle"
+			isProtected = globalHook.protectedButtons["middle"]
+		case WM_XBUTTONUP:
+			// For XBUTTON events in low-level mouse hook, button info is in high word of mouseData
+			mouseStruct := (*MSLLHOOKSTRUCT)(unsafe.Pointer(lParam))
+			buttonFlag := uint32(mouseStruct.MouseData >> 16) & 0xFFFF
+			
+			// Check which X button is pressed based on the high word of mouseData
+			if buttonFlag == 1 { // XBUTTON1
+				downEvent = WM_XBUTTONDOWN
+				buttonName = "XBUTTON1"
+				isProtected = globalHook.protectedButtons["xbutton1"]
+			} else if buttonFlag == 2 { // XBUTTON2
+				downEvent = WM_XBUTTONDOWN
+				buttonName = "XBUTTON2"
+				isProtected = globalHook.protectedButtons["xbutton2"]
+			} else {
+				// Unknown XBUTTON, allow through
+				ret, _, _ := procCallNextHookEx.Call(
+					uintptr(globalHook.hook),
+					uintptr(nCode),
+					wParam,
+					lParam,
+				)
+				return ret
+			}
+		}
+
+		// If this button is not protected, allow the event through
+		if !isProtected {
+			ret, _, _ := procCallNextHookEx.Call(
+				uintptr(globalHook.hook),
+				uintptr(nCode),
+				wParam,
+				lParam,
+			)
+			return ret
 		}
 
 		now := time.Now()
@@ -208,14 +304,19 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 
 	case WM_MOUSEMOVE:
 		// Check if any button is currently pressed and mark as drag (but don't spam logs)
-		if globalHook.buttonPressed[WM_LBUTTONDOWN] && !globalHook.dragDetected[WM_LBUTTONDOWN] {
+		if globalHook.buttonPressed[WM_LBUTTONDOWN] && globalHook.protectedButtons["left"] && !globalHook.dragDetected[WM_LBUTTONDOWN] {
 			globalHook.dragDetected[WM_LBUTTONDOWN] = true
 			globalHook.sendLog("🖱️  Left button drag operation detected")
 		}
-		if globalHook.buttonPressed[WM_RBUTTONDOWN] && !globalHook.dragDetected[WM_RBUTTONDOWN] {
+		if globalHook.buttonPressed[WM_RBUTTONDOWN] && globalHook.protectedButtons["right"] && !globalHook.dragDetected[WM_RBUTTONDOWN] {
 			globalHook.dragDetected[WM_RBUTTONDOWN] = true
 			globalHook.sendLog("🖱️  Right button drag operation detected")
 		}
+		if globalHook.buttonPressed[WM_MBUTTONDOWN] && globalHook.protectedButtons["middle"] && !globalHook.dragDetected[WM_MBUTTONDOWN] {
+			globalHook.dragDetected[WM_MBUTTONDOWN] = true
+			globalHook.sendLog("🖱️  Middle button drag operation detected")
+		}
+		// Note: XBUTTON drag detection would require additional tracking since we don't have specific DOWN/UP events
 	}
 
 	ret, _, _ := procCallNextHookEx.Call(
@@ -227,10 +328,67 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 	return ret
 }
 
+// GetMouseButtonCount returns the number of mouse buttons available on the system
+func GetMouseButtonCount() int {
+	// Check if a mouse is present
+	mousePresent, _, _ := procGetSystemMetrics.Call(19) // SM_MOUSEPRESENT
+	if mousePresent == 0 {
+		return 0
+	}
+	
+	// Get the number of mouse buttons
+	buttonCount, _, _ := procGetSystemMetrics.Call(43) // SM_CMOUSEBUTTONS
+	return int(buttonCount)
+}
+
+// GetMouseButtons returns a list of available mouse buttons with their names
+func GetMouseButtons() []struct {
+	Name string
+	ID   string
+} {
+	buttons := []struct {
+		Name string
+		ID   string
+	}{
+		{Name: "Left Mouse Button", ID: "left"},
+		{Name: "Right Mouse Button", ID: "right"},
+		{Name: "Middle Mouse Button", ID: "middle"},
+	}
+	
+	// Check how many buttons the mouse has
+	buttonCount := GetMouseButtonCount()
+	
+	// Add XBUTTON1 and XBUTTON2 if the mouse has 4 or more buttons
+	if buttonCount >= 4 {
+		buttons = append(buttons, struct {
+			Name string
+			ID   string
+		}{Name: "Mouse Button 4 (XBUTTON1)", ID: "xbutton1"})
+	}
+	
+	// Add XBUTTON2 if the mouse has 5 or more buttons
+	if buttonCount >= 5 {
+		buttons = append(buttons, struct {
+			Name string
+			ID   string
+		}{Name: "Mouse Button 5 (XBUTTON2)", ID: "xbutton2"})
+	}
+	
+	return buttons
+}
+
 // This is the callback function that Windows will call
 var mouseProc = syscall.NewCallback(LowLevelMouseProc)
 
-func (w *windowsHook) Start(delay time.Duration, logChan chan string) error {
+// SetProtectedButtons sets which mouse buttons should be protected
+func (w *WindowsHook) SetProtectedButtons(buttons []string) {
+	w.protectedButtons = make(map[string]bool)
+	for _, button := range buttons {
+		w.protectedButtons[button] = true
+	}
+}
+
+func (w *WindowsHook) Start(delay time.Duration, logChan chan string) error {
 	if w.isRunning {
 		return fmt.Errorf("hook is already running")
 	}
@@ -247,6 +405,12 @@ func (w *windowsHook) Start(delay time.Duration, logChan chan string) error {
 	w.lastDownTime = make(map[uintptr]time.Time)
 	w.lastDownBlocked = make(map[uintptr]bool)
 	w.lastUpTime = make(map[uintptr]time.Time)
+	
+	// Initialize protected buttons if not already set
+	if w.protectedButtons == nil {
+		w.protectedButtons = map[string]bool{"left": true} // Default to left button only
+	}
+	
 	globalHook = w
 
 	go func() {
@@ -287,7 +451,7 @@ func (w *windowsHook) Start(delay time.Duration, logChan chan string) error {
 	return nil
 }
 
-func (w *windowsHook) Stop() error {
+func (w *WindowsHook) Stop() error {
 	if !w.isRunning {
 		return nil
 	}
@@ -304,20 +468,20 @@ func (w *windowsHook) Stop() error {
 	return nil
 }
 
-func (w *windowsHook) GetBlockedCount() int {
+func (w *WindowsHook) GetBlockedCount() int {
 	return w.blockedCount
 }
 
-func (w *windowsHook) ResetBlockedCount() {
+func (w *WindowsHook) ResetBlockedCount() {
 	w.blockedCount = 0
 }
 
-func (w *windowsHook) IsSupported() bool {
+func (w *WindowsHook) IsSupported() bool {
 	return true
 }
 
 // detectFaultyHardware analyzes click patterns to detect faulty mouse behavior
-func (w *windowsHook) detectFaultyHardware(button uintptr, holdDuration time.Duration) {
+func (w *WindowsHook) detectFaultyHardware(button uintptr, holdDuration time.Duration) {
 	// Track recent click times (keep last 10 clicks)
 	if w.faultyClickPattern[button] == nil {
 		w.faultyClickPattern[button] = make([]time.Time, 0, 10)
@@ -382,7 +546,7 @@ func (w *windowsHook) detectFaultyHardware(button uintptr, holdDuration time.Dur
 
 // getEffectiveDelay returns the adaptive delay for a specific button
 // Never returns a delay less than the user-selected delay
-func (w *windowsHook) getEffectiveDelay(button uintptr) time.Duration {
+func (w *WindowsHook) getEffectiveDelay(button uintptr) time.Duration {
 	if adaptiveDelay, exists := w.adaptiveDelay[button]; exists && adaptiveDelay >= w.delay {
 		return adaptiveDelay
 	}

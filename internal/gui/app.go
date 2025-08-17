@@ -48,6 +48,7 @@ type Application struct {
 	logContainer        *container.Scroll
 	minimizeToTrayCheck *widget.Check
 	autoStartCheck      *widget.Check
+	mouseButtonsButton  *widget.Button
 	updateChan     chan int
 	updateChanOnce sync.Once
 
@@ -260,6 +261,7 @@ func (app *Application) setupUI() {
 	app.delaySlider = widget.NewSlider(5, 500)
 	app.delaySlider.SetValue(float64(app.config.DelayMs))
 	app.delaySlider.Step = 5 // 5ms increments
+	app.delaySlider.Resize(fyne.NewSize(300, app.delaySlider.MinSize().Height))
 
 	// Value label to show current slider value
 	app.delayValueLabel = widget.NewLabel(fmt.Sprintf("%d ms", app.config.DelayMs))
@@ -332,12 +334,33 @@ func (app *Application) setupUI() {
 	configTitle.TextSize = 16 // Reduced font size
 	configHeader := container.NewHBox(widget.NewIcon(theme.SettingsIcon()), configTitle)
 
+	// Create the mouse buttons button with a cog icon
+	app.mouseButtonsButton = widget.NewButtonWithIcon("", theme.SettingsIcon(), func() {
+		dialogs.ShowMouseButtonsDialog(app.window, app.config, func(selectedButtons []string) {
+			// Update config with selected buttons
+			app.config.ProtectedButtons = selectedButtons
+			if err := app.config.Save(); err != nil {
+				app.logger.Log("⚠️ Failed to save mouse button settings: %v", err)
+			} else {
+				app.logger.Log("✅ Mouse button protection updated: %v", selectedButtons)
+			}
+		})
+	})
+	
+	// Create a horizontal container for the slider label and button
+	labelWithButton := container.NewBorder(
+		nil, nil, nil, app.mouseButtonsButton,
+		widget.NewLabel("Delay (ms):"),
+	)
+	
+	delayContainer := container.NewVBox(
+		labelWithButton,
+		app.delaySlider,
+		container.NewCenter(app.delayValueLabel),
+	)
+
 	configContent := container.NewVBox(
-		container.NewVBox(
-			widget.NewLabel("Delay (ms):"),
-			app.delaySlider,
-			container.NewCenter(app.delayValueLabel),
-		),
+		delayContainer,
 		app.minimizeToTrayCheck,
 		app.autoStartCheck,
 	)
@@ -400,8 +423,9 @@ func (app *Application) startProtection() {
 
 	// Update UI elements on main thread
 	fyne.Do(func() {
-		// Disable slider when protection is active
+		// Disable slider and mouse buttons button when protection is active
 		app.delaySlider.Disable()
+		app.mouseButtonsButton.Disable()
 
 		app.statusIcon.FillColor = color.RGBA{R: 40, G: 167, B: 69, A: 255} // Green for active
 		app.statusIcon.Refresh()
@@ -412,6 +436,11 @@ func (app *Application) startProtection() {
 
 	app.isRunning = true
 	app.logger.Log("Starting double-click protection with %d ms delay", delayMs)
+
+	// Set protected buttons before starting the hook
+	if wh, ok := app.hook.(*hooks.WindowsHook); ok {
+		wh.SetProtectedButtons(app.config.ProtectedButtons)
+	}
 
 	err := app.hook.Start(time.Duration(delayMs)*time.Millisecond, app.logger.GetChannel())
 	if err != nil {
@@ -449,8 +478,9 @@ func (app *Application) resetUI() {
 		app.toggleButton.SetText("Start Protection")
 		app.toggleButton.Importance = widget.HighImportance
 
-		// Re-enable slider when protection is stopped
+		// Re-enable slider and mouse buttons button when protection is stopped
 		app.delaySlider.Enable()
+		app.mouseButtonsButton.Enable()
 	})
 
 	// Update tray tooltip when protection stops

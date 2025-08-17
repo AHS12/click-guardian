@@ -33,3 +33,7 @@ func (u *unsupportedHook) ResetBlockedCount() {
 func (u *unsupportedHook) IsSupported() bool {
 	return false
 }
+
+func (u *unsupportedHook) SetProtectedButtons(buttons []string) {
+	// No-op on unsupported platforms
+}
