@@ -16,6 +16,7 @@ type Config struct {
 	WindowWidth    int    `json:"window_width"`
 	WindowHeight   int    `json:"window_height"`
 	MinimizeToTray bool   `json:"minimize_to_tray"`
+	ProtectedButtons []string `json:"protected_buttons"`
 }
 
 // DefaultConfig returns a configuration with default values
@@ -27,6 +28,7 @@ func DefaultConfig() *Config {
 		WindowWidth:    500,
 		WindowHeight:   450,
 		MinimizeToTray: true,
+		ProtectedButtons: []string{"left", "right"}, 
 	}
 }
 
@@ -107,6 +109,10 @@ func LoadConfig() *Config {
 	}
 	if config.LogLevel == "" {
 		config.LogLevel = DefaultConfig().LogLevel
+	}
+	// Set default protected buttons if not specified or empty
+	if len(config.ProtectedButtons) == 0 {
+		config.ProtectedButtons = DefaultConfig().ProtectedButtons
 	}
 
 	return &config

@@ -13,6 +13,7 @@ type MouseHook interface {
 	GetBlockedCount() int
 	ResetBlockedCount()
 	IsSupported() bool
+	SetProtectedButtons(buttons []string)
 }
 
 // NewMouseHook creates a new mouse hook for the current platform
