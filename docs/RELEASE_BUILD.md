@@ -13,7 +13,8 @@ scripts\release-build.bat
 This will create:
 
 - `dist\click-guardian.exe` - Main application
-- `dist\click-guardian-v1.0.0-windows-portable.zip` - Complete release package
+- `dist\click-guardian-v1.0.4-windows-portable.zip` - Complete release package
+```
 
 ## 📋 Prerequisites
 
@@ -36,7 +37,7 @@ Edit **ONE** file to change the version:
 **File: `build\build.conf`**
 
 ```ini
-VERSION=1.0.0
+VERSION=1.0.4
 ```
 
 That's it! The build script automatically uses this version for:
@@ -44,6 +45,12 @@ That's it! The build script automatically uses this version for:
 - Executable metadata
 - Package naming
 - Release documentation
+
+The release build script automatically updates the following files with the new version:
+
+- `wix.json` - Windows installer configuration
+- `build/windows/app.rc` - Windows resource file (contains version info embedded in executable)
+- `build/windows/app-manifest.xml` - Application manifest file
 
 ### Version Auto-Detection
 
@@ -71,7 +78,7 @@ The simplified build process:
 
 - **GUI Version** (`click-guardian.exe`) - Main application for end users  
   _(Windows icon, manifest, and version info are embedded via `click-guardian.syso`)_
-- **Release Package** (`click-guardian-v1.0.0-windows-portable.zip`) - Complete distribution package
+- **Release Package** (`click-guardian-v1.0.4-windows-portable.zip`) - Complete distribution package
 
 ## 🔧 Manual Build Commands
 
@@ -91,7 +98,7 @@ go build -ldflags "-s -w" -o dist\click-guardian.exe .\cmd\click-guardian
 
 ```cmd
 # Set your version
-set VERSION=1.0.0
+set VERSION=1.0.4
 set GIT_COMMIT=abc1234
 set BUILD_BY=YourName
 
@@ -135,7 +142,7 @@ pvk2pfx -pvk mykey.pvk -spc mycert.cer -pfx mycert.pfx
 The ZIP package includes:
 
 ```
-click-guardian-v1.0.0-windows/
+click-guardian-v1.0.4-windows/
 ├── click-guardian-gui.exe      # Main application
 ├── README.txt                  # Usage instructions
 └── LICENSE                     # License (if present)
@@ -143,21 +150,8 @@ click-guardian-v1.0.0-windows/
 
 ## 🚀 Distribution
 
-### GitHub Releases (Recommended)
-
-1. **Update version** in `build\build.conf`
-2. **Build release**:
-   ```cmd
-   scripts\release-build.bat
-   ```
-3. **Create git tag**:
-   ```cmd
-   git tag -a v1.0.0 -m "Release version 1.0.0"
-   git push origin v1.0.0
-   ```
-4. **Upload to GitHub**:
-   - Go to GitHub → Releases → Create new release
-   - Upload `click-guardian-v1.0.0-windows-portable.zip`
+### GitHub Releases (Recommended)\n\n1. **Update version** in `build\\build.conf`\n2. **Build release**:\n   ```cmd\n   scripts\
+elease-build.bat\n   ```\n3. **Create git tag**:\n   ```cmd\n   git tag -a v1.0.4 -m \"Release version 1.0.4\"\n   git push origin v1.0.4\n   ```\n4. **Upload to GitHub**:\n   - Go to GitHub → Releases → Create new release\n   - Upload `dist\\click-guardian-v1.0.4-windows-portable.zip`
 
 ### Direct Distribution
 
@@ -196,7 +190,7 @@ scripts\release-build.bat
 
 ### No Version Info
 
-- Make sure `build\build.conf` exists with `VERSION=1.0.0`
+- Make sure `build\build.conf` exists with `VERSION=1.0.4`
 - Check that Git is installed and working
 
 ### Large File Size
@@ -208,7 +202,7 @@ scripts\release-build.bat
 
 ### For Version Changes
 
-- **`build\build.conf`** - Change `VERSION=1.0.0` to your new version
+- **`build\build.conf`** - Change `VERSION=1.0.4` to your new version
 
 ### For Build Customization
 
@@ -228,7 +222,7 @@ scripts\release-build.bat
 
 1. Edit `build\build.conf` → change VERSION
 2. Run `scripts\release-build.bat`
-3. Upload `dist\click-guardian-v1.0.0-windows-portable.zip`
+3. Upload `dist\click-guardian-v1.0.4-windows-portable.zip`
 
 **Simple build (no packaging):**
 
