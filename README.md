@@ -31,11 +31,8 @@
 </p>
 
 <p align="center">
-  <img src="image.png" alt="Click Guardian Screenshot" width="320">
-</p>
-
-<p align="center">
-  <img src="image1.png" alt="Click Guardian Screenshot" width="320">
+  <img src="image.png" alt="Click Guardian Screenshot" width="300" style="display:inline-block; margin-right:10px;">
+  <img src="image1.png" alt="Click Guardian Screenshot" width="300" style="display:inline-block;">
 </p>
 
 ## Features
