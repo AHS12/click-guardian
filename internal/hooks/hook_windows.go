@@ -117,19 +117,19 @@ func (w *WindowsHook) sendLog(msg string) {
 }
 
 // LowLevelMouseProc is the mouse hook callback function
-func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
+func LowLevelMouseProc(nCode int32, wParam uintptr, lParam unsafe.Pointer) uintptr {
 	if nCode < 0 || globalHook == nil {
 		ret, _, _ := procCallNextHookEx.Call(
 			uintptr(globalHook.hook),
 			uintptr(nCode),
 			wParam,
-			lParam,
+			uintptr(lParam),
 		)
 		return ret
 	}
 
 	// Check for injected events (LLMHF_INJECTED is bit 1 of Flags)
-	mouseStruct := (*MSLLHOOKSTRUCT)(unsafe.Pointer(lParam))
+	mouseStruct := (*MSLLHOOKSTRUCT)(lParam)
 	isInjected := (mouseStruct.Flags & 0x01) != 0
 
 	switch wParam {
@@ -149,7 +149,7 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 			isProtected = globalHook.protectedButtons["middle"]
 		case WM_XBUTTONDOWN:
 			// For XBUTTON events in low-level mouse hook, button info is in high word of mouseData
-			mouseStruct := (*MSLLHOOKSTRUCT)(unsafe.Pointer(lParam))
+			mouseStruct := (*MSLLHOOKSTRUCT)(lParam)
 			buttonFlag := uint32(mouseStruct.MouseData>>16) & 0xFFFF
 
 			// Check which X button is pressed based on the high word of mouseData
@@ -165,7 +165,7 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 					uintptr(globalHook.hook),
 					uintptr(nCode),
 					wParam,
-					lParam,
+					uintptr(lParam),
 				)
 				return ret
 			}
@@ -177,7 +177,7 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 				uintptr(globalHook.hook),
 				uintptr(nCode),
 				wParam,
-				lParam,
+				uintptr(lParam),
 			)
 			return ret
 		}
@@ -282,7 +282,7 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 			isProtected = globalHook.protectedButtons["middle"]
 		case WM_XBUTTONUP:
 			// For XBUTTON events in low-level mouse hook, button info is in high word of mouseData
-			mouseStruct := (*MSLLHOOKSTRUCT)(unsafe.Pointer(lParam))
+			mouseStruct := (*MSLLHOOKSTRUCT)(lParam)
 			buttonFlag := uint32(mouseStruct.MouseData>>16) & 0xFFFF
 
 			// Check which X button is pressed based on the high word of mouseData
@@ -300,7 +300,7 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 					uintptr(globalHook.hook),
 					uintptr(nCode),
 					wParam,
-					lParam,
+					uintptr(lParam),
 				)
 				return ret
 			}
@@ -312,7 +312,7 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 				uintptr(globalHook.hook),
 				uintptr(nCode),
 				wParam,
-				lParam,
+				uintptr(lParam),
 			)
 			return ret
 		}
@@ -406,7 +406,7 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 		uintptr(globalHook.hook),
 		uintptr(nCode),
 		wParam,
-		lParam,
+		uintptr(lParam),
 	)
 	return ret
 }
