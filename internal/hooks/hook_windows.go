@@ -14,29 +14,34 @@ import (
 )
 
 var (
-	user32                  = syscall.NewLazyDLL("user32.dll")
-	kernel32                = syscall.NewLazyDLL("kernel32.dll")
-	procSetWindowsHookEx    = user32.NewProc("SetWindowsHookExW")
-	procCallNextHookEx      = user32.NewProc("CallNextHookEx")
-	procUnhookWindowsHookEx = user32.NewProc("UnhookWindowsHookEx")
-	procGetMessage          = user32.NewProc("GetMessageW")
-	procTranslateMessage    = user32.NewProc("TranslateMessage")
-	procDispatchMessage     = user32.NewProc("DispatchMessageW")
-	procGetSystemMetrics    = user32.NewProc("GetSystemMetrics")
-	procMouseEvent          = user32.NewProc("mouse_event")
+	user32                       = syscall.NewLazyDLL("user32.dll")
+	kernel32                     = syscall.NewLazyDLL("kernel32.dll")
+	procSetWindowsHookEx         = user32.NewProc("SetWindowsHookExW")
+	procCallNextHookEx           = user32.NewProc("CallNextHookEx")
+	procUnhookWindowsHookEx      = user32.NewProc("UnhookWindowsHookEx")
+	procGetMessage               = user32.NewProc("GetMessageW")
+	procTranslateMessage         = user32.NewProc("TranslateMessage")
+	procDispatchMessage          = user32.NewProc("DispatchMessageW")
+	procGetSystemMetrics         = user32.NewProc("GetSystemMetrics")
+	procMouseEvent               = user32.NewProc("mouse_event")
+	procGetForegroundWindow      = user32.NewProc("GetForegroundWindow")
+	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
+	procOpenProcess              = kernel32.NewProc("OpenProcess")
+	procCloseHandle              = kernel32.NewProc("CloseHandle")
 )
 
 const (
-	WH_MOUSE_LL    = 14
-	WM_LBUTTONDOWN = 0x0201
-	WM_LBUTTONUP   = 0x0202
-	WM_RBUTTONDOWN = 0x0204
-	WM_RBUTTONUP   = 0x0205
-	WM_MOUSEMOVE   = 0x0200
-	WM_MBUTTONDOWN = 0x0207
-	WM_MBUTTONUP   = 0x0208
-	WM_XBUTTONDOWN = 0x020B
-	WM_XBUTTONUP   = 0x020C
+	PROCESS_QUERY_INFORMATION = 0x0400
+	WH_MOUSE_LL               = 14
+	WM_LBUTTONDOWN            = 0x0201
+	WM_LBUTTONUP              = 0x0202
+	WM_RBUTTONDOWN            = 0x0204
+	WM_RBUTTONUP              = 0x0205
+	WM_MOUSEMOVE              = 0x0200
+	WM_MBUTTONDOWN            = 0x0207
+	WM_MBUTTONUP              = 0x0208
+	WM_XBUTTONDOWN            = 0x020B
+	WM_XBUTTONUP              = 0x020C
 
 	MOUSEEVENTF_LEFTDOWN   = 0x0002
 	MOUSEEVENTF_LEFTUP     = 0x0004
@@ -100,10 +105,22 @@ type WindowsHook struct {
 	dragFixThreshold time.Duration
 	pendingUpTimes   map[uintptr]time.Time
 	mu               sync.Mutex
+
+	// Pause hook logic
+	pauseUntil    time.Time
+	pauseDuration time.Duration
+
+	// Cache for process permission checks
+	permCache   map[uint32]bool      // PID -> canInject
+	permCacheTs map[uint32]time.Time // PID -> timestamp
 }
 
 func newPlatformHook() MouseHook {
-	return &WindowsHook{}
+	return &WindowsHook{
+		permCache:     make(map[uint32]bool),
+		permCacheTs:   make(map[uint32]time.Time),
+		pauseDuration: 3 * time.Second, // Default pause duration
+	}
 }
 
 var globalHook *WindowsHook
@@ -116,6 +133,49 @@ func (w *WindowsHook) sendLog(msg string) {
 	}
 }
 
+func (w *WindowsHook) canInjectToForeground() bool {
+	hwnd, _, _ := procGetForegroundWindow.Call()
+	if hwnd == 0 {
+		return true // No foreground window, assume safe
+	}
+
+	var pid uint32
+	procGetWindowThreadProcessId.Call(hwnd, uintptr(unsafe.Pointer(&pid)))
+	if pid == 0 {
+		return true
+	}
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	// Check cache (valid for 5 seconds)
+	if ts, ok := w.permCacheTs[pid]; ok && time.Since(ts) < 5*time.Second {
+		return w.permCache[pid]
+	}
+
+	// Heuristic: Try to open the process with QUERY_INFORMATION.
+	// If we are Standard User and target is Admin, this usually fails with Access Denied.
+	hProcess, _, _ := procOpenProcess.Call(
+		uintptr(PROCESS_QUERY_INFORMATION),
+		0,
+		uintptr(pid),
+	)
+
+	canInject := true
+	if hProcess == 0 {
+		// Failed to open process. Assume high privilege or protected.
+		canInject = false
+	} else {
+		procCloseHandle.Call(hProcess)
+	}
+
+	// Update cache
+	w.permCache[pid] = canInject
+	w.permCacheTs[pid] = time.Now()
+
+	return canInject
+}
+
 // LowLevelMouseProc is the mouse hook callback function
 func LowLevelMouseProc(nCode int32, wParam uintptr, lParam unsafe.Pointer) uintptr {
 	if nCode < 0 || globalHook == nil {
@@ -126,6 +186,26 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam unsafe.Pointer) uintp
 			uintptr(lParam),
 		)
 		return ret
+	}
+
+	// Check if hook is temporarily paused
+	if !globalHook.pauseUntil.IsZero() {
+		if time.Now().Before(globalHook.pauseUntil) {
+			// Allow everything through during pause
+			ret, _, _ := procCallNextHookEx.Call(
+				uintptr(globalHook.hook),
+				uintptr(nCode),
+				wParam,
+				uintptr(lParam),
+			)
+			return ret
+		} else {
+			// Pause expired
+			globalHook.mu.Lock()
+			globalHook.pauseUntil = time.Time{}
+			globalHook.mu.Unlock()
+			globalHook.sendLog("▶️ Protection resumed after temporary pause")
+		}
 	}
 
 	// Check for injected events (LLMHF_INJECTED is bit 1 of Flags)
@@ -322,29 +402,45 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam unsafe.Pointer) uintp
 		// Drag Fix: Delay UP event to check for bounce
 		if !isInjected && globalHook.dragFixEnabled && isProtected {
 			if wParam == WM_LBUTTONUP || wParam == WM_RBUTTONUP || wParam == WM_MBUTTONUP {
-				globalHook.mu.Lock()
-				globalHook.pendingUpTimes[wParam] = now
-				globalHook.mu.Unlock()
-
-				// Start timer to inject event if no bounce occurs
-				go func(btn uintptr, triggerTime time.Time) {
-					time.Sleep(globalHook.dragFixThreshold)
+				// Safety Check: Can we inject into the foreground window?
+				// If not (e.g. Admin window), do NOT block the UP event, or we'll get stuck.
+				if !globalHook.canInjectToForeground() {
+					// We detected a high-privilege window where injection would fail.
+					// Instead of just allowing this ONE event, let's pause protection for a few seconds.
+					// This allows the user to interact with the Admin app/VM without interference.
 
 					globalHook.mu.Lock()
-					if pendingTime, exists := globalHook.pendingUpTimes[btn]; exists && pendingTime.Equal(triggerTime) {
-						// Still pending! No DOWN came to clear it.
-						// It was a real release.
-						delete(globalHook.pendingUpTimes, btn)
-						globalHook.mu.Unlock()
+					globalHook.pauseUntil = time.Now().Add(globalHook.pauseDuration)
+					globalHook.mu.Unlock()
 
-						// Inject the UP event
-						globalHook.injectUp(btn)
-					} else {
-						globalHook.mu.Unlock()
-					}
-				}(wParam, now)
+					globalHook.sendLog(fmt.Sprintf("⚠️ High privilege window detected. Pausing protection for %v", globalHook.pauseDuration))
 
-				return 1 // Block the original UP
+					// Allow this event through immediately
+				} else {
+					globalHook.mu.Lock()
+					globalHook.pendingUpTimes[wParam] = now
+					globalHook.mu.Unlock()
+
+					// Start timer to inject event if no bounce occurs
+					go func(btn uintptr, triggerTime time.Time) {
+						time.Sleep(globalHook.dragFixThreshold)
+
+						globalHook.mu.Lock()
+						if pendingTime, exists := globalHook.pendingUpTimes[btn]; exists && pendingTime.Equal(triggerTime) {
+							// Still pending! No DOWN came to clear it.
+							// It was a real release.
+							delete(globalHook.pendingUpTimes, btn)
+							globalHook.mu.Unlock()
+
+							// Inject the UP event
+							globalHook.injectUp(btn)
+						} else {
+							globalHook.mu.Unlock()
+						}
+					}(wParam, now)
+
+					return 1 // Block the original UP
+				}
 			}
 		}
 
@@ -470,11 +566,17 @@ func (w *WindowsHook) SetProtectedButtons(buttons []string) {
 	}
 }
 
-func (w *WindowsHook) SetDragFix(enabled bool, threshold int) {
+func (w *WindowsHook) SetDragFix(enabled bool, threshold int, pauseDuration int) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.dragFixEnabled = enabled
 	w.dragFixThreshold = time.Duration(threshold) * time.Millisecond
+	if pauseDuration < 1 {
+		pauseDuration = 1
+	} else if pauseDuration > 5 {
+		pauseDuration = 5
+	}
+	w.pauseDuration = time.Duration(pauseDuration) * time.Second
 	if !enabled {
 		w.pendingUpTimes = make(map[uintptr]time.Time)
 	}

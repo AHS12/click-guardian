@@ -19,6 +19,7 @@ type SettingsCallbacks struct {
 	OnProtectedButtonsChanged func([]string)
 	OnDragFixChanged          func(bool)
 	OnDragFixThresholdChanged func(int)
+	OnPauseDurationChanged    func(int)
 }
 
 // ShowSettingsDialog shows a comprehensive settings dialog
@@ -124,12 +125,24 @@ func ShowSettingsDialog(parent fyne.Window, cfg *config.Config, initialAutoStart
 		callbacks.OnDragFixThresholdChanged(int(v))
 	}
 
+	// Pause Duration Slider (1-5s)
+	pauseDurationLabel := widget.NewLabel(fmt.Sprintf("%d s", cfg.PauseDuration))
+	pauseDurationSlider := widget.NewSlider(1, 5)
+	pauseDurationSlider.Value = float64(cfg.PauseDuration)
+	pauseDurationSlider.Step = 1
+	pauseDurationSlider.OnChanged = func(v float64) {
+		pauseDurationLabel.SetText(fmt.Sprintf("%.0f s", v))
+		callbacks.OnPauseDurationChanged(int(v))
+	}
+
 	// Helper to update slider state
 	updateSliderState := func(enabled bool) {
 		if enabled {
 			dragThresholdSlider.Enable()
+			pauseDurationSlider.Enable()
 		} else {
 			dragThresholdSlider.Disable()
+			pauseDurationSlider.Disable()
 		}
 	}
 
@@ -147,16 +160,16 @@ func ShowSettingsDialog(parent fyne.Window, cfg *config.Config, initialAutoStart
 		widget.NewSeparator(),
 		widget.NewLabel("Drag Fix Threshold"),
 		container.NewBorder(nil, nil, nil, dragThresholdLabel, dragThresholdSlider),
+		widget.NewSeparator(),
+		widget.NewLabel("High Privilege Pause Duration"),
+		container.NewBorder(nil, nil, nil, pauseDurationLabel, pauseDurationSlider),
 	)
 
 	dragFixInfo := widget.NewRichTextFromMarkdown(
-		"**What is this?**\n" +
-			"This feature prevents accidental drag drops caused by faulty mouse switches (bouncing).\n\n" +
-			"**How it works:**\n" +
-			"If the mouse button momentarily releases during a drag, the software will ignore the release " +
-			"and maintain the hold signal for a short duration (adjustable). If the button is pressed again immediately " +
-			"(bounce), the drag continues uninterrupted.\n\n" +
-			"_Note: This may introduce a slight delay to mouse release events corresponding to the threshold._")
+		"**Drag Fix (Anti-Bounce):**\n" +
+			"Prevents accidental drops by ignoring momentary release signals (bouncing) during drags.\n\n" +
+			"**High Privilege Pause:**\n" +
+			"Pauses protection when interacting with Admin apps (e.g. VMware) to prevent stuck drags.")
 	dragFixInfo.Wrapping = fyne.TextWrapWord
 
 	advancedContent := container.NewVBox(

@@ -19,6 +19,7 @@ type Config struct {
 	ProtectedButtons []string `json:"protected_buttons"`
 	DragFix          bool     `json:"drag_fix"`
 	DragFixThreshold int      `json:"drag_fix_threshold"`
+	PauseDuration    int      `json:"pause_duration"` // Pause duration in seconds (1-5)
 }
 
 // DefaultConfig returns a configuration with default values
@@ -33,6 +34,7 @@ func DefaultConfig() *Config {
 		ProtectedButtons: []string{"left", "right"},
 		DragFix:          false,
 		DragFixThreshold: 50,
+		PauseDuration:    3,
 	}
 }
 
@@ -120,6 +122,9 @@ func LoadConfig() *Config {
 	}
 	if config.DragFixThreshold <= 0 {
 		config.DragFixThreshold = DefaultConfig().DragFixThreshold
+	}
+	if config.PauseDuration < 1 || config.PauseDuration > 5 {
+		config.PauseDuration = DefaultConfig().PauseDuration
 	}
 
 	return &config

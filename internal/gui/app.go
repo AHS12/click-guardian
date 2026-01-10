@@ -302,7 +302,7 @@ func (app *Application) setupUI() {
 				// Update hook if active
 				if app.isRunning {
 					if wh, ok := app.hook.(*hooks.WindowsHook); ok {
-						wh.SetDragFix(app.config.DragFix, app.config.DragFixThreshold)
+						wh.SetDragFix(app.config.DragFix, app.config.DragFixThreshold, app.config.PauseDuration)
 					}
 				}
 			},
@@ -312,7 +312,17 @@ func (app *Application) setupUI() {
 				// Update hook if active
 				if app.isRunning {
 					if wh, ok := app.hook.(*hooks.WindowsHook); ok {
-						wh.SetDragFix(app.config.DragFix, app.config.DragFixThreshold)
+						wh.SetDragFix(app.config.DragFix, app.config.DragFixThreshold, app.config.PauseDuration)
+					}
+				}
+			},
+			OnPauseDurationChanged: func(val int) {
+				app.config.PauseDuration = val
+				app.config.Save()
+				// Update hook if active
+				if app.isRunning {
+					if wh, ok := app.hook.(*hooks.WindowsHook); ok {
+						wh.SetDragFix(app.config.DragFix, app.config.DragFixThreshold, app.config.PauseDuration)
 					}
 				}
 			},
@@ -427,7 +437,7 @@ func (app *Application) startProtection() {
 	// Set protected buttons and drag fix settings before starting the hook
 	if wh, ok := app.hook.(*hooks.WindowsHook); ok {
 		wh.SetProtectedButtons(app.config.ProtectedButtons)
-		wh.SetDragFix(app.config.DragFix, app.config.DragFixThreshold)
+		wh.SetDragFix(app.config.DragFix, app.config.DragFixThreshold, app.config.PauseDuration)
 	}
 
 	err := app.hook.Start(time.Duration(delayMs)*time.Millisecond, app.logger.GetChannel())
