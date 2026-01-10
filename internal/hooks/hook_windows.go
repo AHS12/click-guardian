@@ -7,34 +7,50 @@ package hooks
 
 import (
 	"fmt"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
 )
 
 var (
-	user32               = syscall.NewLazyDLL("user32.dll")
-	kernel32             = syscall.NewLazyDLL("kernel32.dll")
-	procSetWindowsHookEx = user32.NewProc("SetWindowsHookExW")
-	procCallNextHookEx   = user32.NewProc("CallNextHookEx")
-	procUnhookWindowsHookEx = user32.NewProc("UnhookWindowsHookEx")
-	procGetMessage       = user32.NewProc("GetMessageW")
-	procTranslateMessage = user32.NewProc("TranslateMessage")
-	procDispatchMessage  = user32.NewProc("DispatchMessageW")
-	procGetSystemMetrics = user32.NewProc("GetSystemMetrics")
+	user32                       = syscall.NewLazyDLL("user32.dll")
+	kernel32                     = syscall.NewLazyDLL("kernel32.dll")
+	procSetWindowsHookEx         = user32.NewProc("SetWindowsHookExW")
+	procCallNextHookEx           = user32.NewProc("CallNextHookEx")
+	procUnhookWindowsHookEx      = user32.NewProc("UnhookWindowsHookEx")
+	procGetMessage               = user32.NewProc("GetMessageW")
+	procTranslateMessage         = user32.NewProc("TranslateMessage")
+	procDispatchMessage          = user32.NewProc("DispatchMessageW")
+	procGetSystemMetrics         = user32.NewProc("GetSystemMetrics")
+	procMouseEvent               = user32.NewProc("mouse_event")
+	procGetForegroundWindow      = user32.NewProc("GetForegroundWindow")
+	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
+	procOpenProcess              = kernel32.NewProc("OpenProcess")
+	procCloseHandle              = kernel32.NewProc("CloseHandle")
 )
 
 const (
-	WH_MOUSE_LL = 14
-	WM_LBUTTONDOWN = 0x0201
-	WM_LBUTTONUP   = 0x0202
-	WM_RBUTTONDOWN = 0x0204
-	WM_RBUTTONUP   = 0x0205
-	WM_MOUSEMOVE   = 0x0200
-	WM_MBUTTONDOWN = 0x0207
-	WM_MBUTTONUP   = 0x0208
-	WM_XBUTTONDOWN = 0x020B
-	WM_XBUTTONUP   = 0x020C
+	PROCESS_QUERY_INFORMATION = 0x0400
+	WH_MOUSE_LL               = 14
+	WM_LBUTTONDOWN            = 0x0201
+	WM_LBUTTONUP              = 0x0202
+	WM_RBUTTONDOWN            = 0x0204
+	WM_RBUTTONUP              = 0x0205
+	WM_MOUSEMOVE              = 0x0200
+	WM_MBUTTONDOWN            = 0x0207
+	WM_MBUTTONUP              = 0x0208
+	WM_XBUTTONDOWN            = 0x020B
+	WM_XBUTTONUP              = 0x020C
+
+	MOUSEEVENTF_LEFTDOWN   = 0x0002
+	MOUSEEVENTF_LEFTUP     = 0x0004
+	MOUSEEVENTF_RIGHTDOWN  = 0x0008
+	MOUSEEVENTF_RIGHTUP    = 0x0010
+	MOUSEEVENTF_MIDDLEDOWN = 0x0020
+	MOUSEEVENTF_MIDDLEUP   = 0x0040
+	MOUSEEVENTF_XDOWN      = 0x0080
+	MOUSEEVENTF_XUP        = 0x0100
 )
 
 type POINT struct {
@@ -80,13 +96,31 @@ type WindowsHook struct {
 	lastDownTime    map[uintptr]time.Time // Track last DOWN event time
 	lastDownBlocked map[uintptr]bool      // Track if last DOWN was blocked
 	lastUpTime      map[uintptr]time.Time // Track last UP event time
-	
+
 	// Protected buttons configuration
 	protectedButtons map[string]bool
+
+	// Drag Fix
+	dragFixEnabled   bool
+	dragFixThreshold time.Duration
+	pendingUpTimes   map[uintptr]time.Time
+	mu               sync.Mutex
+
+	// Pause hook logic
+	pauseUntil    time.Time
+	pauseDuration time.Duration
+
+	// Cache for process permission checks
+	permCache   map[uint32]bool      // PID -> canInject
+	permCacheTs map[uint32]time.Time // PID -> timestamp
 }
 
 func newPlatformHook() MouseHook {
-	return &WindowsHook{}
+	return &WindowsHook{
+		permCache:     make(map[uint32]bool),
+		permCacheTs:   make(map[uint32]time.Time),
+		pauseDuration: 3 * time.Second, // Default pause duration
+	}
 }
 
 var globalHook *WindowsHook
@@ -99,23 +133,90 @@ func (w *WindowsHook) sendLog(msg string) {
 	}
 }
 
+func (w *WindowsHook) canInjectToForeground() bool {
+	hwnd, _, _ := procGetForegroundWindow.Call()
+	if hwnd == 0 {
+		return true // No foreground window, assume safe
+	}
+
+	var pid uint32
+	procGetWindowThreadProcessId.Call(hwnd, uintptr(unsafe.Pointer(&pid)))
+	if pid == 0 {
+		return true
+	}
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	// Check cache (valid for 5 seconds)
+	if ts, ok := w.permCacheTs[pid]; ok && time.Since(ts) < 5*time.Second {
+		return w.permCache[pid]
+	}
+
+	// Heuristic: Try to open the process with QUERY_INFORMATION.
+	// If we are Standard User and target is Admin, this usually fails with Access Denied.
+	hProcess, _, _ := procOpenProcess.Call(
+		uintptr(PROCESS_QUERY_INFORMATION),
+		0,
+		uintptr(pid),
+	)
+
+	canInject := true
+	if hProcess == 0 {
+		// Failed to open process. Assume high privilege or protected.
+		canInject = false
+	} else {
+		procCloseHandle.Call(hProcess)
+	}
+
+	// Update cache
+	w.permCache[pid] = canInject
+	w.permCacheTs[pid] = time.Now()
+
+	return canInject
+}
+
 // LowLevelMouseProc is the mouse hook callback function
-func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
+func LowLevelMouseProc(nCode int32, wParam uintptr, lParam unsafe.Pointer) uintptr {
 	if nCode < 0 || globalHook == nil {
 		ret, _, _ := procCallNextHookEx.Call(
 			uintptr(globalHook.hook),
 			uintptr(nCode),
 			wParam,
-			lParam,
+			uintptr(lParam),
 		)
 		return ret
 	}
+
+	// Check if hook is temporarily paused
+	if !globalHook.pauseUntil.IsZero() {
+		if time.Now().Before(globalHook.pauseUntil) {
+			// Allow everything through during pause
+			ret, _, _ := procCallNextHookEx.Call(
+				uintptr(globalHook.hook),
+				uintptr(nCode),
+				wParam,
+				uintptr(lParam),
+			)
+			return ret
+		} else {
+			// Pause expired
+			globalHook.mu.Lock()
+			globalHook.pauseUntil = time.Time{}
+			globalHook.mu.Unlock()
+			globalHook.sendLog("▶️ Protection resumed after temporary pause")
+		}
+	}
+
+	// Check for injected events (LLMHF_INJECTED is bit 1 of Flags)
+	mouseStruct := (*MSLLHOOKSTRUCT)(lParam)
+	isInjected := (mouseStruct.Flags & 0x01) != 0
 
 	switch wParam {
 	case WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_XBUTTONDOWN:
 		buttonName := "Left"
 		isProtected := globalHook.protectedButtons["left"]
-		
+
 		switch wParam {
 		case WM_LBUTTONDOWN:
 			buttonName = "Left"
@@ -128,9 +229,9 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 			isProtected = globalHook.protectedButtons["middle"]
 		case WM_XBUTTONDOWN:
 			// For XBUTTON events in low-level mouse hook, button info is in high word of mouseData
-			mouseStruct := (*MSLLHOOKSTRUCT)(unsafe.Pointer(lParam))
-			buttonFlag := uint32(mouseStruct.MouseData >> 16) & 0xFFFF
-			
+			mouseStruct := (*MSLLHOOKSTRUCT)(lParam)
+			buttonFlag := uint32(mouseStruct.MouseData>>16) & 0xFFFF
+
 			// Check which X button is pressed based on the high word of mouseData
 			if buttonFlag == 1 { // XBUTTON1
 				buttonName = "XBUTTON1"
@@ -144,7 +245,7 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 					uintptr(globalHook.hook),
 					uintptr(nCode),
 					wParam,
-					lParam,
+					uintptr(lParam),
 				)
 				return ret
 			}
@@ -156,9 +257,41 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 				uintptr(globalHook.hook),
 				uintptr(nCode),
 				wParam,
-				lParam,
+				uintptr(lParam),
 			)
 			return ret
+		}
+
+		// Drag Fix: Check if this DOWN is a bounce after a blocked UP
+		if globalHook.dragFixEnabled {
+			var upEvent uintptr
+			switch wParam {
+			case WM_LBUTTONDOWN:
+				upEvent = WM_LBUTTONUP
+			case WM_RBUTTONDOWN:
+				upEvent = WM_RBUTTONUP
+			case WM_MBUTTONDOWN:
+				upEvent = WM_MBUTTONUP
+			}
+
+			if upEvent != 0 {
+				globalHook.mu.Lock()
+				pendingTime, hasPending := globalHook.pendingUpTimes[upEvent]
+				if hasPending {
+					// We have a pending UP event. This DOWN is likely a bounce.
+					// Check if it's within a reasonable window of the UP (timer hasn't fired yet)
+					if time.Since(pendingTime) < globalHook.dragFixThreshold+50*time.Millisecond {
+						// It is a bounce! Clear the pending UP so it won't be injected.
+						delete(globalHook.pendingUpTimes, upEvent)
+						globalHook.mu.Unlock()
+
+						globalHook.blockedCount++
+						globalHook.sendLog(fmt.Sprintf("🛡️ DRAG FIX: Blocked bounce for %s button (UP+DOWN suppressed)", buttonName))
+						return 1
+					}
+				}
+				globalHook.mu.Unlock()
+			}
 		}
 
 		now := time.Now()
@@ -213,7 +346,7 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 		var downEvent uintptr
 		buttonName := "Left"
 		isProtected := globalHook.protectedButtons["left"]
-		
+
 		switch wParam {
 		case WM_LBUTTONUP:
 			downEvent = WM_LBUTTONDOWN
@@ -229,9 +362,9 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 			isProtected = globalHook.protectedButtons["middle"]
 		case WM_XBUTTONUP:
 			// For XBUTTON events in low-level mouse hook, button info is in high word of mouseData
-			mouseStruct := (*MSLLHOOKSTRUCT)(unsafe.Pointer(lParam))
-			buttonFlag := uint32(mouseStruct.MouseData >> 16) & 0xFFFF
-			
+			mouseStruct := (*MSLLHOOKSTRUCT)(lParam)
+			buttonFlag := uint32(mouseStruct.MouseData>>16) & 0xFFFF
+
 			// Check which X button is pressed based on the high word of mouseData
 			if buttonFlag == 1 { // XBUTTON1
 				downEvent = WM_XBUTTONDOWN
@@ -247,7 +380,7 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 					uintptr(globalHook.hook),
 					uintptr(nCode),
 					wParam,
-					lParam,
+					uintptr(lParam),
 				)
 				return ret
 			}
@@ -259,12 +392,58 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 				uintptr(globalHook.hook),
 				uintptr(nCode),
 				wParam,
-				lParam,
+				uintptr(lParam),
 			)
 			return ret
 		}
 
 		now := time.Now()
+
+		// Drag Fix: Delay UP event to check for bounce
+		if !isInjected && globalHook.dragFixEnabled && isProtected {
+			if wParam == WM_LBUTTONUP || wParam == WM_RBUTTONUP || wParam == WM_MBUTTONUP {
+				// Safety Check: Can we inject into the foreground window?
+				// If not (e.g. Admin window), do NOT block the UP event, or we'll get stuck.
+				if !globalHook.canInjectToForeground() {
+					// We detected a high-privilege window where injection would fail.
+					// Instead of just allowing this ONE event, let's pause protection for a few seconds.
+					// This allows the user to interact with the Admin app/VM without interference.
+
+					globalHook.mu.Lock()
+					globalHook.pauseUntil = time.Now().Add(globalHook.pauseDuration)
+					globalHook.mu.Unlock()
+
+					globalHook.sendLog(fmt.Sprintf("⚠️ High privilege window detected. Pausing protection for %v", globalHook.pauseDuration))
+
+					// Allow this event through immediately
+				} else {
+					globalHook.mu.Lock()
+					globalHook.pendingUpTimes[wParam] = now
+					globalHook.mu.Unlock()
+
+					// Start timer to inject event if no bounce occurs
+					go func(btn uintptr, triggerTime time.Time) {
+						time.Sleep(globalHook.dragFixThreshold)
+
+						globalHook.mu.Lock()
+						if pendingTime, exists := globalHook.pendingUpTimes[btn]; exists && pendingTime.Equal(triggerTime) {
+							// Still pending! No DOWN came to clear it.
+							// It was a real release.
+							delete(globalHook.pendingUpTimes, btn)
+							globalHook.mu.Unlock()
+
+							// Inject the UP event
+							globalHook.injectUp(btn)
+						} else {
+							globalHook.mu.Unlock()
+						}
+					}(wParam, now)
+
+					return 1 // Block the original UP
+				}
+			}
+		}
+
 		lastDown := globalHook.buttonPressTime[downEvent]
 		lastUp := globalHook.lastUpTime[wParam]
 		upInterval := now.Sub(lastUp)
@@ -323,7 +502,7 @@ func LowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 		uintptr(globalHook.hook),
 		uintptr(nCode),
 		wParam,
-		lParam,
+		uintptr(lParam),
 	)
 	return ret
 }
@@ -335,7 +514,6 @@ func GetMouseButtonCount() int {
 	if mousePresent == 0 {
 		return 0
 	}
-	
 	// Get the number of mouse buttons
 	buttonCount, _, _ := procGetSystemMetrics.Call(43) // SM_CMOUSEBUTTONS
 	return int(buttonCount)
@@ -354,10 +532,10 @@ func GetMouseButtons() []struct {
 		{Name: "Right Mouse Button", ID: "right"},
 		{Name: "Middle Mouse Button", ID: "middle"},
 	}
-	
+
 	// Check how many buttons the mouse has
 	buttonCount := GetMouseButtonCount()
-	
+
 	// Add XBUTTON1 and XBUTTON2 if the mouse has 4 or more buttons
 	if buttonCount >= 4 {
 		buttons = append(buttons, struct {
@@ -365,7 +543,7 @@ func GetMouseButtons() []struct {
 			ID   string
 		}{Name: "Mouse Button 4 (XBUTTON1)", ID: "xbutton1"})
 	}
-	
+
 	// Add XBUTTON2 if the mouse has 5 or more buttons
 	if buttonCount >= 5 {
 		buttons = append(buttons, struct {
@@ -373,7 +551,7 @@ func GetMouseButtons() []struct {
 			ID   string
 		}{Name: "Mouse Button 5 (XBUTTON2)", ID: "xbutton2"})
 	}
-	
+
 	return buttons
 }
 
@@ -385,6 +563,38 @@ func (w *WindowsHook) SetProtectedButtons(buttons []string) {
 	w.protectedButtons = make(map[string]bool)
 	for _, button := range buttons {
 		w.protectedButtons[button] = true
+	}
+}
+
+func (w *WindowsHook) SetDragFix(enabled bool, threshold int, pauseDuration int) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.dragFixEnabled = enabled
+	w.dragFixThreshold = time.Duration(threshold) * time.Millisecond
+	if pauseDuration < 1 {
+		pauseDuration = 1
+	} else if pauseDuration > 5 {
+		pauseDuration = 5
+	}
+	w.pauseDuration = time.Duration(pauseDuration) * time.Second
+	if !enabled {
+		w.pendingUpTimes = make(map[uintptr]time.Time)
+	}
+}
+
+func (w *WindowsHook) injectUp(button uintptr) {
+	var flags uintptr
+	switch button {
+	case WM_LBUTTONUP:
+		flags = MOUSEEVENTF_LEFTUP
+	case WM_RBUTTONUP:
+		flags = MOUSEEVENTF_RIGHTUP
+	case WM_MBUTTONUP:
+		flags = MOUSEEVENTF_MIDDLEUP
+	}
+
+	if flags != 0 {
+		procMouseEvent.Call(flags, 0, 0, 0, 0)
 	}
 }
 
@@ -405,12 +615,13 @@ func (w *WindowsHook) Start(delay time.Duration, logChan chan string) error {
 	w.lastDownTime = make(map[uintptr]time.Time)
 	w.lastDownBlocked = make(map[uintptr]bool)
 	w.lastUpTime = make(map[uintptr]time.Time)
-	
+	w.pendingUpTimes = make(map[uintptr]time.Time)
+
 	// Initialize protected buttons if not already set
 	if w.protectedButtons == nil {
 		w.protectedButtons = map[string]bool{"left": true} // Default to left button only
 	}
-	
+
 	globalHook = w
 
 	go func() {
@@ -420,16 +631,16 @@ func (w *WindowsHook) Start(delay time.Duration, logChan chan string) error {
 			0,
 			0,
 		)
-		
+
 		if ret == 0 {
 			w.logChannel <- fmt.Sprintf("❌ Failed to install mouse hook: %v", err)
 			w.isRunning = false
 			return
 		}
-		
+
 		w.hook = syscall.Handle(ret)
 		w.logChannel <- "🎯 Mouse hook installed successfully - protection active!"
-		
+
 		var msg MSG
 		for w.isRunning {
 			ret, _, _ := procGetMessage.Call(
@@ -438,11 +649,11 @@ func (w *WindowsHook) Start(delay time.Duration, logChan chan string) error {
 				0,
 				0,
 			)
-			
+
 			if ret == 0 {
 				break // WM_QUIT
 			}
-			
+
 			procTranslateMessage.Call(uintptr(unsafe.Pointer(&msg)))
 			procDispatchMessage.Call(uintptr(unsafe.Pointer(&msg)))
 		}

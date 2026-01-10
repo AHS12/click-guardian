@@ -49,8 +49,8 @@ func main() {
 	spec := mutex.Spec{
 		Name:    "click-guardian-single-instance", // Must be unique per app (valid format)
 		Clock:   realClock{},                      // Use real-time clock
-		Delay:   500 * time.Millisecond,          // Polling interval
-		Timeout: 1 * time.Second,                 // How long to wait for the mutex
+		Delay:   500 * time.Millisecond,           // Polling interval
+		Timeout: 1 * time.Second,                  // How long to wait for the mutex
 	}
 
 	// Try to acquire the mutex

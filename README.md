@@ -38,7 +38,9 @@
 
 - 🎯 **Strict Double-Click Blocking**: Ensures no double-clicks are allowed under any circumstances
 - ⚙️ **Customizable Delay**: Set delay from 5ms to 500ms (default: 50ms)
-- 🛡️ **Adaptive Protection**: Automatically increases delay when faulty mouse hardware is detected (never decreases below user setting)
+- �️ **Drag Fix (Anti-Bounce)**: Prevents accidental drops by ignoring momentary release signals (bouncing) during drags
+- ⏸️ **High Privilege Pause**: Automatically pauses protection when interacting with Admin/System windows to prevent stuck drags
+- �️ **Adaptive Protection**: Automatically increases delay when faulty mouse hardware is detected (never decreases below user setting)
 - 📊 **Real-time Logging**: Detailed logs for allowed and blocked clicks, including reasons and timestamps
 - 🖥️ **Modern GUI**: Clean and intuitive Fyne-based interface
 - 🚀 **Lightweight**: Minimal resource usage
@@ -51,7 +53,8 @@ The application installs a low-level mouse hook that monitors left and right mou
 1. **First Click**: Always allowed and logged
 2. **Subsequent Clicks**: Strictly blocked if they occur within the specified delay period for that specific button
 3. **Independent Timers**: Left and right mouse buttons have separate timers - switching between buttons doesn't reset the protection
-4. **Adaptive Protection**: Automatically detects faulty mouse hardware patterns (like low-pressure clicks) and increases the protection delay accordingly - never reduces below your selected setting
+4. **Drag Fix**: If a button release is detected during a drag, it is momentarily held. If the button is pressed again immediately (bounce), the drag continues uninterrupted.
+5. **Adaptive Protection**: Automatically detects faulty mouse hardware patterns (like low-pressure clicks) and increases the protection delay accordingly - never reduces below your selected setting
 
 The adaptive system ensures maximum protection against problematic mice while maintaining your chosen baseline delay for normal operation.
 
