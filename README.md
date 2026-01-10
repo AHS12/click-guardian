@@ -31,6 +31,10 @@
 </p>
 
 <p align="center">
+  <img src="image.png" alt="Click Guardian Screenshot" width="320">
+</p>
+
+<p align="center">
   <img src="image1.png" alt="Click Guardian Screenshot" width="320">
 </p>
 
