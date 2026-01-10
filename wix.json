@@ -1,10 +1,10 @@
 {
   "product": "Click Guardian",
   "company": "Click Guardian Project",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "license": "LICENSE.txt",
   "upgrade-code": "d900466f-5e04-43c5-b7f4-cbeb7ce26bce",
-  "product-code": "5e112bc4-0e3c-4756-bf93-2146e1a0ae79",
+  "product-code": "a9ba61cd-a53d-4133-862e-2dabc21827ad",
   "files": {
     "guid": "ea91758f-b81c-4384-8bbc-ddb21be99e96",
     "items": [
