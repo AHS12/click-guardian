@@ -10,25 +10,29 @@ import (
 
 // Config holds the application configuration
 type Config struct {
-	DelayMs        int    `json:"delay_ms"`
-	LogLevel       string `json:"log_level"`
-	MaxLogLines    int    `json:"max_log_lines"`
-	WindowWidth    int    `json:"window_width"`
-	WindowHeight   int    `json:"window_height"`
-	MinimizeToTray bool   `json:"minimize_to_tray"`
+	DelayMs          int      `json:"delay_ms"`
+	LogLevel         string   `json:"log_level"`
+	MaxLogLines      int      `json:"max_log_lines"`
+	WindowWidth      int      `json:"window_width"`
+	WindowHeight     int      `json:"window_height"`
+	MinimizeToTray   bool     `json:"minimize_to_tray"`
 	ProtectedButtons []string `json:"protected_buttons"`
+	DragFix          bool     `json:"drag_fix"`
+	DragFixThreshold int      `json:"drag_fix_threshold"`
 }
 
 // DefaultConfig returns a configuration with default values
 func DefaultConfig() *Config {
 	return &Config{
-		DelayMs:        50,
-		LogLevel:       "info",
-		MaxLogLines:    100,
-		WindowWidth:    500,
-		WindowHeight:   450,
-		MinimizeToTray: true,
-		ProtectedButtons: []string{"left", "right"}, 
+		DelayMs:          50,
+		LogLevel:         "info",
+		MaxLogLines:      100,
+		WindowWidth:      300,
+		WindowHeight:     500,
+		MinimizeToTray:   true,
+		ProtectedButtons: []string{"left", "right"},
+		DragFix:          false,
+		DragFixThreshold: 50,
 	}
 }
 
@@ -113,6 +117,9 @@ func LoadConfig() *Config {
 	// Set default protected buttons if not specified or empty
 	if len(config.ProtectedButtons) == 0 {
 		config.ProtectedButtons = DefaultConfig().ProtectedButtons
+	}
+	if config.DragFixThreshold <= 0 {
+		config.DragFixThreshold = DefaultConfig().DragFixThreshold
 	}
 
 	return &config

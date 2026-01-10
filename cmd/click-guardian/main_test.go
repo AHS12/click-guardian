@@ -12,8 +12,8 @@ func TestSingleInstanceMutex(t *testing.T) {
 	spec := mutex.Spec{
 		Name:    "click-guardian-test-single-instance", // Valid name for testing
 		Clock:   realClock{},                           // Use real-time clock
-		Delay:   100 * time.Millisecond,               // Short polling interval for testing
-		Timeout: 500 * time.Millisecond,               // Short timeout for testing
+		Delay:   100 * time.Millisecond,                // Short polling interval for testing
+		Timeout: 500 * time.Millisecond,                // Short timeout for testing
 	}
 
 	// Acquire the mutex

@@ -37,20 +37,18 @@ type Application struct {
 	lastBlockedCount int
 
 	// UI components
-	delaySlider         *widget.Slider
-	delayValueLabel     *widget.Label
-	statusLabel         *widget.Label
-	statusIcon          *canvas.Circle
-	counterText         *canvas.Text
-	blockedLabelText    *canvas.Text
-	toggleButton        *widget.Button
-	logText             *widget.RichText
-	logContainer        *container.Scroll
-	minimizeToTrayCheck *widget.Check
-	autoStartCheck      *widget.Check
-	mouseButtonsButton  *widget.Button
-	updateChan     chan int
-	updateChanOnce sync.Once
+	statusLabel      *widget.Label
+	statusIcon       *canvas.Circle
+	counterText      *canvas.Text
+	blockedLabelText *canvas.Text
+	toggleButton     *widget.Button
+	delaySlider      *widget.Slider
+	delayLabel       *widget.Label
+	logText          *widget.RichText
+	logContainer     *container.Scroll
+	settingsButton   *widget.Button
+	updateChan       chan int
+	updateChanOnce   sync.Once
 
 	// System tray
 	trayRestore *systray.MenuItem
@@ -197,8 +195,6 @@ func (app *Application) RunWithAutoProtect() {
 	if !app.hook.IsSupported() {
 		app.logger.Log("❌ Mouse hooking not supported on this platform")
 	} else {
-		app.logger.Log("Enter a delay value or protection will start automatically")
-
 		// Auto-start protection
 		go func() {
 			// Small delay to ensure everything is initialized
@@ -257,45 +253,88 @@ func (app *Application) setupUI() {
 		)),
 	)
 
-	// Delay slider with min 5ms, max 500ms
-	app.delaySlider = widget.NewSlider(5, 500)
-	app.delaySlider.SetValue(float64(app.config.DelayMs))
-	app.delaySlider.Step = 5 // 5ms increments
-	app.delaySlider.Resize(fyne.NewSize(300, app.delaySlider.MinSize().Height))
+	// Delay Slider Section
+	app.delayLabel = widget.NewLabel("Delay (ms):")
 
-	// Value label to show current slider value
-	app.delayValueLabel = widget.NewLabel(fmt.Sprintf("%d ms", app.config.DelayMs))
-	app.delayValueLabel.Alignment = fyne.TextAlignCenter
+	delayValueLabel := widget.NewLabel(fmt.Sprintf("%d ms", app.config.DelayMs))
+	delayValueLabel.Alignment = fyne.TextAlignCenter
 
-	// Update label when slider value changes
-	app.delaySlider.OnChanged = func(value float64) {
-		app.delayValueLabel.SetText(fmt.Sprintf("%.0f ms", value))
-		// Save the new delay value to config
-		app.config.DelayMs = int(value)
-		if err := app.config.Save(); err != nil {
-			app.logger.Log("⚠️ Failed to save delay setting: %v", err)
-		}
+	app.delaySlider = widget.NewSlider(10, 500)
+	app.delaySlider.Value = float64(app.config.DelayMs)
+	app.delaySlider.Step = 5
+	app.delaySlider.OnChanged = func(val float64) {
+		app.config.DelayMs = int(val)
+		app.config.Save()
+		delayValueLabel.SetText(fmt.Sprintf("%d ms", int(val)))
 	}
 
-	// Minimize to tray checkbox
-	app.minimizeToTrayCheck = widget.NewCheck("Minimize to system tray when closing", func(checked bool) {
-		app.minimizeToTrayEnabled = checked
-		// Save the minimize to tray preference
-		app.config.MinimizeToTray = checked
-		if err := app.config.Save(); err != nil {
-			app.logger.Log("⚠️ Failed to save minimize to tray setting: %v", err)
-		}
+	// Settings Button (Icon only)
+	app.settingsButton = widget.NewButtonWithIcon("", theme.SettingsIcon(), func() {
+		dialogs.ShowSettingsDialog(app.window, app.config, platform.IsAutoStartEnabled(), dialogs.SettingsCallbacks{
+			OnDelayChanged: func(val int) {
+				app.config.DelayMs = val
+				app.config.Save()
+				if app.delaySlider != nil {
+					app.delaySlider.Value = float64(val)
+					app.delaySlider.Refresh()
+				}
+				if delayValueLabel != nil {
+					delayValueLabel.SetText(fmt.Sprintf("%d ms", val))
+				}
+			},
+			OnMinimizeToTrayChanged: func(val bool) {
+				app.minimizeToTrayEnabled = val
+				app.config.MinimizeToTray = val
+				app.config.Save()
+			},
+			OnAutoStartChanged: func(val bool) {
+				app.onAutoStartChanged(val)
+			},
+			OnProtectedButtonsChanged: func(buttons []string) {
+				app.config.ProtectedButtons = buttons
+				app.config.Save()
+				app.logger.Log("✅ Mouse button protection updated: %v", buttons)
+			},
+			OnDragFixChanged: func(val bool) {
+				app.config.DragFix = val
+				app.config.Save()
+				app.logger.Log("Settings updated: Drag Fix = %v", val)
+				// Update hook if active
+				if app.isRunning {
+					if wh, ok := app.hook.(*hooks.WindowsHook); ok {
+						wh.SetDragFix(app.config.DragFix, app.config.DragFixThreshold)
+					}
+				}
+			},
+			OnDragFixThresholdChanged: func(val int) {
+				app.config.DragFixThreshold = val
+				app.config.Save()
+				// Update hook if active
+				if app.isRunning {
+					if wh, ok := app.hook.(*hooks.WindowsHook); ok {
+						wh.SetDragFix(app.config.DragFix, app.config.DragFixThreshold)
+					}
+				}
+			},
+		})
 	})
-	app.minimizeToTrayCheck.SetChecked(app.config.MinimizeToTray)
+	app.settingsButton.Importance = widget.LowImportance // Subtle but accessible
 
-	// Auto-start checkbox
-	app.autoStartCheck = widget.NewCheck("Start with Windows and auto-enable protection", app.onAutoStartChanged)
-	app.autoStartCheck.SetChecked(false) // Default unchecked
+	// Configuration Group
+	configTitle := widget.NewRichTextFromMarkdown("**Configuration**")
+	configHeader := container.NewHBox(widget.NewIcon(theme.SettingsIcon()), configTitle)
 
-	// Remove the separate auto-protect checkbox - it's now integrated
+	// Settings button next to slider
+	sliderContainer := container.NewBorder(nil, nil, nil, app.settingsButton, app.delaySlider)
 
-	// Check current auto-start status and update checkbox
-	app.updateAutoStartStatus()
+	configContent := container.NewVBox(
+		configHeader,
+		app.delayLabel,
+		sliderContainer,
+		delayValueLabel,
+	)
+
+	configCard := widget.NewCard("", "", configContent)
 
 	// Clear log button
 	clearButton := widget.NewButton("Clear Log", func() {
@@ -309,11 +348,6 @@ func (app *Application) setupUI() {
 
 	// --- Layout ---
 
-	// Main control section with toggle button
-	controlSection := container.NewVBox(
-		container.NewCenter(app.toggleButton),
-	)
-
 	// Status and statistics section with the new indicator
 	hoverIndicator := components.NewHoverAware(statusIndicator, func() string {
 		if app.isRunning {
@@ -323,52 +357,6 @@ func (app *Application) setupUI() {
 		}
 	})
 	statusIndicatorContainer := container.NewGridWrap(fyne.NewSize(200, 200), hoverIndicator)
-
-	statusStatsContainer := container.NewVBox(
-		container.NewCenter(statusIndicatorContainer),
-	)
-
-	// Settings and input grouped together
-	configTitle := canvas.NewText("Configuration", color.White)
-	configTitle.TextStyle = fyne.TextStyle{Bold: true}
-	configTitle.TextSize = 16 // Reduced font size
-	configHeader := container.NewHBox(widget.NewIcon(theme.SettingsIcon()), configTitle)
-
-	// Create the mouse buttons button with a cog icon
-	app.mouseButtonsButton = widget.NewButtonWithIcon("", theme.SettingsIcon(), func() {
-		dialogs.ShowMouseButtonsDialog(app.window, app.config, func(selectedButtons []string) {
-			// Update config with selected buttons
-			app.config.ProtectedButtons = selectedButtons
-			if err := app.config.Save(); err != nil {
-				app.logger.Log("⚠️ Failed to save mouse button settings: %v", err)
-			} else {
-				app.logger.Log("✅ Mouse button protection updated: %v", selectedButtons)
-			}
-		})
-	})
-	
-	// Create a horizontal container for the slider label and button
-	labelWithButton := container.NewBorder(
-		nil, nil, nil, app.mouseButtonsButton,
-		widget.NewLabel("Delay (ms):"),
-	)
-	
-	delayContainer := container.NewVBox(
-		labelWithButton,
-		app.delaySlider,
-		container.NewCenter(app.delayValueLabel),
-	)
-
-	configContent := container.NewVBox(
-		delayContainer,
-		app.minimizeToTrayCheck,
-		app.autoStartCheck,
-	)
-
-	configSection := widget.NewCard("", "", container.NewVBox(
-		configHeader, // Left-aligned
-		configContent,
-	))
 
 	// Log section with clear button integrated
 	logTitle := canvas.NewText("Activity Log", color.White)
@@ -381,14 +369,13 @@ func (app *Application) setupUI() {
 		app.logContainer,
 	))
 
-	// Assemble the final content
 	content := container.NewVBox(
-		canvas.NewRectangle(color.Transparent), // Top spacer
-		statusStatsContainer,
-		canvas.NewRectangle(color.Transparent), // Bottom spacer
-		controlSection,
+		canvas.NewRectangle(color.Transparent), // Spacer
+		container.NewCenter(statusIndicatorContainer),
+		canvas.NewRectangle(color.Transparent), // Spacer
+		container.NewCenter(app.toggleButton),
 		widget.NewSeparator(),
-		configSection,
+		configCard,
 		widget.NewSeparator(),
 		logSection,
 	)
@@ -418,14 +405,14 @@ func (app *Application) startProtection() {
 		return
 	}
 
-	// Get delay value from slider
-	delayMs := int(app.delaySlider.Value)
+	// Get delay value from config
+	delayMs := app.config.DelayMs
 
 	// Update UI elements on main thread
 	fyne.Do(func() {
-		// Disable slider and mouse buttons button when protection is active
-		app.delaySlider.Disable()
-		app.mouseButtonsButton.Disable()
+		// Disable settings button when protection is active
+		app.settingsButton.Disable()
+		app.delaySlider.Disable() // Disable slider
 
 		app.statusIcon.FillColor = color.RGBA{R: 40, G: 167, B: 69, A: 255} // Green for active
 		app.statusIcon.Refresh()
@@ -437,9 +424,10 @@ func (app *Application) startProtection() {
 	app.isRunning = true
 	app.logger.Log("Starting double-click protection with %d ms delay", delayMs)
 
-	// Set protected buttons before starting the hook
+	// Set protected buttons and drag fix settings before starting the hook
 	if wh, ok := app.hook.(*hooks.WindowsHook); ok {
 		wh.SetProtectedButtons(app.config.ProtectedButtons)
+		wh.SetDragFix(app.config.DragFix, app.config.DragFixThreshold)
 	}
 
 	err := app.hook.Start(time.Duration(delayMs)*time.Millisecond, app.logger.GetChannel())
@@ -478,9 +466,9 @@ func (app *Application) resetUI() {
 		app.toggleButton.SetText("Start Protection")
 		app.toggleButton.Importance = widget.HighImportance
 
-		// Re-enable slider and mouse buttons button when protection is stopped
-		app.delaySlider.Enable()
-		app.mouseButtonsButton.Enable()
+		// Re-enable settings button when protection is stopped
+		app.settingsButton.Enable()
+		app.delaySlider.Enable() // Enable slider
 	})
 
 	// Update tray tooltip when protection stops
@@ -738,8 +726,6 @@ func (app *Application) onAutoStartChanged(checked bool) {
 		err := platform.EnableAutoStart()
 		if err != nil {
 			app.logger.Log("❌ Failed to enable auto-start: %v", err)
-			// Revert checkbox state if failed
-			app.autoStartCheck.SetChecked(false)
 		} else {
 			app.logger.Log("✅ Auto-start with Windows enabled")
 		}
@@ -747,16 +733,8 @@ func (app *Application) onAutoStartChanged(checked bool) {
 		err := platform.DisableAutoStart()
 		if err != nil {
 			app.logger.Log("❌ Failed to disable auto-start: %v", err)
-			// Revert checkbox state if failed
-			app.autoStartCheck.SetChecked(true)
 		} else {
 			app.logger.Log("✅ Auto-start with Windows disabled")
 		}
 	}
-}
-
-// updateAutoStartStatus checks if auto-start is currently enabled and updates the checkbox
-func (app *Application) updateAutoStartStatus() {
-	isEnabled := platform.IsAutoStartEnabled()
-	app.autoStartCheck.SetChecked(isEnabled)
 }
