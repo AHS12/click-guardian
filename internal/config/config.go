@@ -11,6 +11,7 @@ import (
 // Config holds the application configuration
 type Config struct {
 	DelayMs          int      `json:"delay_ms"`
+	ScrollDelayMs    int      `json:"scroll_delay_ms"`
 	LogLevel         string   `json:"log_level"`
 	MaxLogLines      int      `json:"max_log_lines"`
 	WindowWidth      int      `json:"window_width"`
@@ -26,6 +27,7 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		DelayMs:          50,
+		ScrollDelayMs:    50,
 		LogLevel:         "info",
 		MaxLogLines:      100,
 		WindowWidth:      300,
@@ -103,6 +105,9 @@ func LoadConfig() *Config {
 	// Validate loaded config and use defaults for invalid values
 	if config.DelayMs < 5 || config.DelayMs > 500 {
 		config.DelayMs = DefaultConfig().DelayMs
+	}
+	if config.ScrollDelayMs < 0 || config.ScrollDelayMs > 500 {
+		config.ScrollDelayMs = DefaultConfig().ScrollDelayMs
 	}
 	if config.MaxLogLines <= 0 {
 		config.MaxLogLines = DefaultConfig().MaxLogLines

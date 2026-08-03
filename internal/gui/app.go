@@ -44,6 +44,7 @@ type Application struct {
 	toggleButton     *widget.Button
 	delaySlider      *widget.Slider
 	delayLabel       *widget.Label
+	scrollDelaySlider *widget.Slider
 	logText          *widget.RichText
 	logContainer     *container.Scroll
 	settingsButton   *widget.Button
@@ -254,7 +255,7 @@ func (app *Application) setupUI() {
 	)
 
 	// Delay Slider Section
-	app.delayLabel = widget.NewLabel("Delay (ms):")
+	app.delayLabel = widget.NewLabel("Button Delay (ms):")
 
 	delayValueLabel := widget.NewLabel(fmt.Sprintf("%d ms", app.config.DelayMs))
 	delayValueLabel.Alignment = fyne.TextAlignCenter
@@ -266,6 +267,20 @@ func (app *Application) setupUI() {
 		app.config.DelayMs = int(val)
 		app.config.Save()
 		delayValueLabel.SetText(fmt.Sprintf("%d ms", int(val)))
+	}
+
+	// Scroll Delay Slider Section
+	scrollDelayLabel := widget.NewLabel("Scroll Delay (ms):")
+	scrollDelayValueLabel := widget.NewLabel(fmt.Sprintf("%d ms", app.config.ScrollDelayMs))
+	scrollDelayValueLabel.Alignment = fyne.TextAlignCenter
+
+	app.scrollDelaySlider = widget.NewSlider(0, 500)
+	app.scrollDelaySlider.Value = float64(app.config.ScrollDelayMs)
+	app.scrollDelaySlider.Step = 5
+	app.scrollDelaySlider.OnChanged = func(val float64) {
+		app.config.ScrollDelayMs = int(val)
+		app.config.Save()
+		scrollDelayValueLabel.SetText(fmt.Sprintf("%d ms", int(val)))
 	}
 
 	// Settings Button (Icon only)
@@ -342,6 +357,10 @@ func (app *Application) setupUI() {
 		app.delayLabel,
 		sliderContainer,
 		delayValueLabel,
+		widget.NewSeparator(),
+		scrollDelayLabel,
+		app.scrollDelaySlider,
+		scrollDelayValueLabel,
 	)
 
 	configCard := widget.NewCard("", "", configContent)
@@ -423,6 +442,7 @@ func (app *Application) startProtection() {
 		// Disable settings button when protection is active
 		app.settingsButton.Disable()
 		app.delaySlider.Disable() // Disable slider
+		app.scrollDelaySlider.Disable()
 
 		app.statusIcon.FillColor = color.RGBA{R: 40, G: 167, B: 69, A: 255} // Green for active
 		app.statusIcon.Refresh()
@@ -479,6 +499,7 @@ func (app *Application) resetUI() {
 		// Re-enable settings button when protection is stopped
 		app.settingsButton.Enable()
 		app.delaySlider.Enable() // Enable slider
+		app.scrollDelaySlider.Enable()
 	})
 
 	// Update tray tooltip when protection stops
